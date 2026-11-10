@@ -1,0 +1,21 @@
+# Used only by the dev container. `docker compose up` from the repo root
+# does not start this service.
+services:
+  workspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    volumes:
+      - ..:/workspace:cached
+    command:
+      [
+        "bash",
+        "-lc",
+        "socat TCP-LISTEN:8080,fork,reuseaddr TCP:frontend:80 & socat TCP-LISTEN:8000,fork,reuseaddr TCP:backend:8000 & exec sleep infinity",
+      ]
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy

@@ -1,0 +1,53 @@
+name: quantum-circuit-generation
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      GROQ_TIMEOUT_SECONDS: ${GROQ_TIMEOUT_SECONDS:-45}
+      MAX_QUBITS: ${MAX_QUBITS:-8}
+      MAX_SHOTS: ${MAX_SHOTS:-10000}
+      SHOTS: ${SHOTS:-1000}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-3}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
+      MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-65536}
+      MAX_PROMPT_CHARS: ${MAX_PROMPT_CHARS:-4000}
+      MAX_GATES: ${MAX_GATES:-128}
+      HISTORY_ENABLED: ${HISTORY_ENABLED:-true}
+      HISTORY_DATABASE_PATH: ${HISTORY_DATABASE_PATH:-/tmp/qcg-history.db}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped

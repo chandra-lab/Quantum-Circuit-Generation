@@ -1,0 +1,24 @@
+{
+  "name": "Quantum Circuit Generation",
+  "dockerComposeFile": ["../docker-compose.yml", "compose.workspace.yml"],
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [8080, 8000],
+  "portsAttributes": {
+    "8080": {
+      "label": "Frontend",
+      "onAutoForward": "openPreview",
+      "visibility": "public",
+      "protocol": "http"
+    },
+    "8000": {
+      "label": "Backend API and Swagger",
+      "onAutoForward": "notify",
+      "visibility": "public",
+      "protocol": "http"
+    }
+  },
+  "initializeCommand": "sh -c 'test -f .env || cp .env.example .env'",
+  "postStartCommand": "echo 'Frontend: port 8080. Swagger: port 8000 path /docs.'",
+  "remoteUser": "root"
+}
