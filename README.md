@@ -109,6 +109,8 @@ Without a key, `POST /api/circuits/generate` and `POST /api/circuits/generate-an
 
 Install [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) with the WSL 2 backend. You do not need a local Python or Node install.
 
+These commands run on the Windows host, where Docker Desktop provides `docker`. They are not the commands to run in a GitHub Codespace terminal. Use the Codespaces section for that shell.
+
 In PowerShell, from the repository root:
 
 ```powershell
@@ -143,23 +145,33 @@ Keeping the clone inside the WSL filesystem is faster, but the same commands wor
 
 ## GitHub Codespaces
 
-`.devcontainer/devcontainer.json` starts the same Compose file and attaches VS Code to the `workspace` service in `.devcontainer/compose.workspace.yml`. That service is a small dev image (Python, git, and socat) with the repository bind-mounted at `/workspace`. The nginx frontend image only contains the built site.
+The Codespace terminal is inside the dev container. The Docker Desktop commands in the previous section run on the Windows host. In the Codespace, rebuild the container, then run `docker compose up --build` from `/workspace`.
 
-Compose resolves paths in the override relative to `docker-compose.yml` (the first file in `dockerComposeFile`). The mount source is `.`, the repository root. A mount of `..` would attach the parent of the clone. In Codespaces that parent is outside the workspace mount, so Explorer shows an empty folder named `workspace` and VS Code reports that the workspace does not exist.
+`.devcontainer/devcontainer.json` attaches VS Code to the `workspace` service in `.devcontainer/compose.workspace.yml`. That service is the attach target only. It is not one of the app containers. `docker compose up` from the repository root reads `docker-compose.yml` and starts the frontend and the backend. It does not start `workspace`, on a Windows host or inside the Codespace.
 
-On creation the dev container copies `.env.example` to `.env` when `.env` is absent. Put a real key in a Codespaces secret named `GROQ_API_KEY`, or edit `.env` after the environment is up. Do not commit `.env`.
+The repository is bind-mounted at `/workspace`. Compose resolves paths in the override relative to `docker-compose.yml` (the first file in `dockerComposeFile`). The mount source is `.`, the repository root. A mount of `..` would attach the parent of the clone. In Codespaces that parent is outside the workspace mount, so Explorer shows an empty folder named `workspace` and VS Code reports that the workspace does not exist.
+
+The workspace image does not install Docker itself. The dev container feature `ghcr.io/devcontainers/features/docker-in-docker` installs the Docker CLI, Compose v2, and a daemon inside this container. A host socket is not available here, so Docker outside of Docker is not used. Rebuild the container before `docker` is on `PATH`. The feature needs a privileged container, which `compose.workspace.yml` sets. Codespaces forwards ports that listen in this container, so the app stack is started here rather than as a sibling service.
+
+On creation the dev container copies `.env.example` to `.env` when `.env` is absent. A Groq key is optional. Put one in a Codespaces secret named `GROQ_API_KEY`, or edit `.env` after the environment is up. Do not commit `.env`. Reference circuits simulate without a key.
 
 After the container is up, the Explorer root (`/workspace`) should list `frontend/`, `backend/`, `README.md`, and `docker-compose.yml`.
 
-1. Open the repository in a Codespace. To pick up this mount on a codespace created before the fix, open the Command Palette and run **Codespaces: Rebuild Container**, or create a new codespace. Reloading the window keeps the old mount.
-2. Wait for the first image build. PyTorch and Qiskit make this slower than a typical web container.
-3. Open the forwarded **Frontend** port **8080**. The port is marked public so a preview link can be shared for a demo.
-4. Open forwarded port **8000** and visit `/docs` for Swagger.
-5. Generate a circuit, or simulate a predefined reference circuit if no key is set.
+1. Open the repository in a Codespace. If this Codespace was created before the Docker feature was added, open the Command Palette and run **Codespaces: Rebuild Container**, or create a new codespace. Reloading the window keeps the previous image and the previous mount.
+2. Wait until the rebuild finishes. The integrated terminal starts in `/workspace`.
+3. From `/workspace`, build and start the frontend and the backend:
 
-The workspace container listens on 8080 and 8000 and relays those connections to the frontend and backend services, which is what Codespaces port forwarding attaches to. The Compose file also publishes the same ports for Docker Desktop.
+   ```bash
+   docker compose up --build
+   ```
 
-A terminal in the workspace container does not need to run `docker compose up` again. The stack is already the dev container. After changing the image definition or this mount, rebuild the Codespace. For day-to-day UI or API edits on a machine with Docker, rebuild with `docker compose up --build`.
+   The first build downloads CPU PyTorch, Qiskit, and Aer. It is large and can take several minutes. The frontend listens on port **8080**. The backend listens on port **8000**.
+
+4. Open the forwarded **Frontend** port **8080**. The port is marked public so a preview link can be shared for a demo.
+5. Open forwarded port **8000** and visit `/docs` for Swagger.
+6. Generate a circuit, or simulate a predefined reference circuit if no key is set.
+
+Stop the app with `docker compose down` from `/workspace`. After a change to the dev container definition or this mount, run **Codespaces: Rebuild Container** again, then run `docker compose up --build` from `/workspace`. Day-to-day UI or API edits on a machine with Docker Desktop still use `docker compose up --build` in a host shell at the repository root.
 
 ## API
 
@@ -283,7 +295,8 @@ Another language-model provider can implement `CircuitLLM` in `backend/app/servi
 - **413 payload_too_large.** The body exceeded `MAX_REQUEST_BYTES`.
 - **Frontend cannot reach the API in Compose.** Use http://localhost:8080 so the browser stays on the nginx origin. Do not point the built UI at `localhost:8000`.
 - **Codespace says the workspace does not exist, or Explorer shows an empty `workspace` folder.** The dev container attaches to the `workspace` service, which bind-mounts the repository root at `/workspace`. Rebuild the container (**Codespaces: Rebuild Container**) or create a new codespace after pulling the fix. Reloading the window does not remount the folder.
-- **Codespace preview is blank during the first start.** The backend health check waits until Aer imports. The frontend container starts after that check passes.
+- **`docker: command not found` in the Codespace terminal.** That shell is inside the dev container. The Windows Docker Desktop commands are for a host shell. Rebuild the container (**Codespaces: Rebuild Container**) so the Docker-in-Docker feature is installed, then from `/workspace` run `docker compose up --build`.
+- **Codespace preview is blank after `docker compose up`.** The backend health check waits until Aer imports. The frontend container starts after that check passes. Forwarded ports 8080 and 8000 appear once those containers are listening.
 - **Diagram text looks sparse.** The backend image installs DejaVu so Matplotlib can label gates. A local venv also needs Matplotlib, which `requirements.txt` installs.
 - **Port already allocated.** Change `8080` or `8000` on the host side of `docker-compose.yml`, and add the new frontend origin to `CORS_ORIGINS` if you call the API from the browser on that origin.
 
