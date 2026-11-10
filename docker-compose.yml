@@ -10,6 +10,7 @@ services:
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      GROQ_VISION_MODEL: ${GROQ_VISION_MODEL:-qwen/qwen3.8-27b}
       GROQ_TIMEOUT_SECONDS: ${GROQ_TIMEOUT_SECONDS:-45}
       MAX_QUBITS: ${MAX_QUBITS:-8}
       MAX_SHOTS: ${MAX_SHOTS:-10000}
@@ -19,6 +20,10 @@ services:
       MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-65536}
       MAX_PROMPT_CHARS: ${MAX_PROMPT_CHARS:-4000}
       MAX_GATES: ${MAX_GATES:-128}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      MAX_PDF_PAGES: ${MAX_PDF_PAGES:-10}
+      PDF_VISION_PAGES: ${PDF_VISION_PAGES:-3}
+      MAX_EXTRACTED_CHARS: ${MAX_EXTRACTED_CHARS:-6000}
       HISTORY_ENABLED: ${HISTORY_ENABLED:-true}
       HISTORY_DATABASE_PATH: ${HISTORY_DATABASE_PATH:-/tmp/qcg-history.db}
     healthcheck:
@@ -41,6 +46,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    environment:
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
     depends_on:
       backend:
         condition: service_healthy

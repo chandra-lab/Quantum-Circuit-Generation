@@ -54,7 +54,8 @@ Generation does not wait on the database. If SQLite cannot be opened or a write 
 | --- | --- |
 | UI | React, Vite, TypeScript, Tailwind CSS |
 | API | Python 3.11, FastAPI, Pydantic v2 |
-| Language model | Groq via `GROQ_API_KEY` and `GROQ_MODEL`. Structured JSON when the model supports it |
+| Language model | Groq via `GROQ_API_KEY` and `GROQ_MODEL`. Structured JSON when the model supports it. `GROQ_VISION_MODEL` reads images |
+| File prompts | `pypdf` for PDF text, `pypdfium2` and Pillow to render scanned pages |
 | Quantum | Qiskit and Qiskit Aer. No `eval` or `exec`. No model-authored Python |
 | Machine learning | CPU PyTorch in the backend image, imported only for a version check |
 | History | Optional SQLite behind a repository interface |
@@ -63,6 +64,7 @@ Generation does not wait on the database. If SQLite cannot be opened or a write 
 ## Features
 
 - Natural-language generation returns a circuit spec, validation status, and model metadata.
+- The prompt box also takes an image or a PDF as the question. See [File prompts](#file-prompts).
 - A missing Groq key is a configuration error. The service does not invent a template circuit in its place.
 - Validation rejects unsupported gates, bad qubit or clbit indexes, colliding measurement bits, identical control and target, and non-finite rotation angles.
 - Supported gates, stored in lowercase: `i`, `x`, `y`, `z`, `h`, `s`, `t`, `rx`, `ry`, `rz`, `cx`, `cz`, `swap`.
@@ -116,6 +118,37 @@ Product simulations require at least one measurement. Bitstrings follow Qiskit o
 The key is read only on the server. It is not sent to the browser, not included in `/api/health`, and redacted if it would appear in a log line. Health reports whether a key is configured and which model name is set.
 
 Without a key, `POST /api/circuits/generate` and `POST /api/circuits/generate-and-simulate` return HTTP 503 and `configuration_error`. `POST /api/circuits/simulate` still runs.
+
+`GROQ_VISION_MODEL` defaults to `qwen/qwen3.8-27b`, which Groq lists as accepting image input (up to 3 images per request, 20 MB per request). It is only used for file prompts. Any other current Groq model with image input can be set instead.
+
+## File prompts
+
+Attach one PNG, JPEG, WebP, or PDF to the prompt box with **Attach image or PDF**, by dropping it on the form, or by pasting an image into the text box. The chip shows the file name and size, a thumbnail for images, and a remove button. Typed text is optional when a file is attached. When both are given, the text is passed as extra instructions next to the question read from the file.
+
+Generate sends the file to `POST /api/circuits/generate-from-file`. The backend reads the question out of the file, then runs the same spec generation, validation, build, and simulation as `generate-and-simulate`. The response is the same, with an `extraction` object added. The UI shows that text under **Extracted from your file** in both Learner and Pro mode, and Learner mode explains the file-generated result the same way as a typed prompt. **Edit and regenerate** moves it into the prompt box, removes the attachment, and lets you correct it before running a plain text prompt.
+
+How each type is read:
+
+- **PDF with a text layer.** `pypdf` extracts text on the server from the first `MAX_PDF_PAGES` pages (default 10). No model is involved in this step.
+- **Scanned PDF.** If those pages hold fewer than 20 letters and digits, the PDF is treated as a scan. The first `PDF_VISION_PAGES` pages (default 3, Groq's per-request image limit) are rendered to JPEG in memory with `pypdfium2` and sent through the image path.
+- **Image.** The vision model is asked to transcribe the question as plain text, including any drawn circuit: qubits, gates in order, controls and targets, angles, and measurements. It is told to treat text in the image as content, not instructions, and to reply `NO_QUANTUM_CONTENT` when there is no quantum question.
+
+The extracted text is capped at `MAX_EXTRACTED_CHARS` (default 6000) and then fed to the existing JSON circuit-spec prompt. Model output is only ever text that goes back through that prompt and the validator. Nothing it returns is executed.
+
+Limits and checks:
+
+- One file per request. `MAX_UPLOAD_MB` (default 10, at most 14 so the base64 image stays under Groq's 20 MB request limit) is enforced by the browser, by nginx (`client_max_body_size` on that route only), and by the backend. The JSON endpoints keep the `MAX_REQUEST_BYTES` cap.
+- The declared MIME type must be one of the four allowed types, and the file's magic bytes must match it. A renamed file is rejected.
+- Uploads are read into memory and not saved. Starlette may spool a large multipart part to an anonymous temporary file, which is deleted when the request closes. nginx streams the upload to the backend without buffering it to disk.
+- Without `GROQ_API_KEY`, an image or a scanned PDF returns the same 503 `configuration_error` as text generation. A PDF with a text layer is still extracted: the 503 body includes `extraction` so the UI can show what was read, and no circuit is returned.
+
+| Status | Code | When |
+| --- | --- | --- |
+| 413 | `file_too_large` | The file exceeds `MAX_UPLOAD_MB` |
+| 415 | `unsupported_media_type` | The type is not PNG, JPEG, WebP, or PDF, or the bytes do not match the declared type |
+| 422 | `extraction_empty` | No question could be read, including a vision reply of `NO_QUANTUM_CONTENT` |
+| 422 | `unreadable_file` | The PDF is damaged or password protected |
+| 422 | `validation_error` | The `file` field is missing, or the generated spec failed validation |
 
 ## Run with Docker Desktop on Windows
 
@@ -207,6 +240,7 @@ All JSON errors use this shape:
 | `POST` | `/api/circuits/validate` | Body is a circuit spec, or `{"spec": {...}}`. Returns `valid`, `errors`, and the normalized spec |
 | `POST` | `/api/circuits/simulate` | Body `{"spec": {...}, "shots": 1000}`. Counts, probabilities, metadata, SVG, and `learner_explanation`. No Groq key required |
 | `POST` | `/api/circuits/generate-and-simulate` | Body `{"prompt": "...", "shots": 1000}`. Spec, validation, diagram, counts, probabilities, and `learner_explanation` |
+| `POST` | `/api/circuits/generate-from-file` | Multipart fields `file`, optional `prompt`, optional `shots`. The generate-and-simulate response plus `extraction` |
 
 `shots` defaults to `SHOTS` (1000) and must be between 1 and `MAX_SHOTS`. Oversized bodies return HTTP 413. Invalid specs on simulate return HTTP 422. Provider rate limits return HTTP 429. Provider failures return HTTP 502. A timed-out model call returns HTTP 504.
 
@@ -236,7 +270,7 @@ Reference outcomes on an ideal simulator, with a few percent of sampling noise a
 
 ## Testing
 
-Backend tests use deterministic specs and never call Groq.
+Backend tests use deterministic specs and never call Groq. File prompt tests build their PDFs in memory and use a fake provider for vision and spec generation.
 
 ```bash
 cd backend
@@ -287,7 +321,7 @@ Possible later uses, none of which are implemented and none of which have result
 backend/app/api          HTTP routes
 backend/app/core         settings and error types
 backend/app/schemas      circuit spec
-backend/app/services     Groq provider, retries, history, workflows
+backend/app/services     Groq provider, retries, history, workflows, file extraction
 backend/app/quantum      gate map, builder, Aer, SVG, reference specs
 backend/app/utils        redaction and shot limits
 backend/tests            pytest
@@ -298,7 +332,7 @@ frontend/src/hooks       request state
 frontend/src/types       shared response types
 ```
 
-Another language-model provider can implement `CircuitLLM` in `backend/app/services/llm/base.py`. Only the Groq adapter is wired up.
+Another language-model provider can implement `CircuitLLM` in `backend/app/services/llm/base.py`: `complete` for spec generation and `transcribe_images` for file prompts. Only the Groq adapter is wired up.
 
 ## Troubleshooting
 
@@ -308,6 +342,9 @@ Another language-model provider can implement `CircuitLLM` in `backend/app/servi
 - **422 validation_error.** The spec used an unknown gate, an index outside the register, a bad angle, or too many qubits. The `details` array names the problem.
 - **400 invalid_shots.** `shots` is below 1 or above `MAX_SHOTS`.
 - **413 payload_too_large.** The body exceeded `MAX_REQUEST_BYTES`.
+- **413 file_too_large.** The attached file exceeded `MAX_UPLOAD_MB`. A file within a few KB of the limit can also be stopped by nginx, because its limit covers the whole multipart body. Restart both containers after changing `MAX_UPLOAD_MB`.
+- **415 unsupported_media_type.** Attach a PNG, JPEG, WebP, or PDF. A file renamed to one of those extensions is rejected when its bytes do not match.
+- **422 extraction_empty.** Nothing readable was found. For a photo, crop to the question and retake it in good light, or type the question instead.
 - **Frontend cannot reach the API in Compose.** Use http://localhost:8080 so the browser stays on the nginx origin. Do not point the built UI at `localhost:8000`.
 - **Codespace says the workspace does not exist, or Explorer shows an empty `workspace` folder.** The dev container attaches to the `workspace` service, which bind-mounts the repository root at `/workspace`. Rebuild the container (**Codespaces: Rebuild Container**) or create a new codespace after pulling the fix. Reloading the window does not remount the folder.
 - **`docker: command not found` in the Codespace terminal.** That shell is inside the dev container. The Windows Docker Desktop commands are for a host shell. Rebuild the container (**Codespaces: Rebuild Container**) so the Docker-in-Docker feature is installed, then from `/workspace` run `docker compose up --build`.
@@ -324,3 +361,7 @@ Another language-model provider can implement `CircuitLLM` in `backend/app/servi
 - The simulator is Qiskit Aer, not quantum hardware. Noise models and backends are not exposed.
 - History is a small optional table. It is not an experiment tracker, and a database failure does not change the circuit result.
 - The model can still propose a spec that is valid and not what you meant. Validation checks structure, not intent.
+- File prompts take one file at a time. PDF text extraction reads `MAX_PDF_PAGES` pages, and scanned PDFs only have their first 3 pages read by the vision model.
+- A scan is detected per document, not per page: a PDF that mixes text pages and scanned pages is read from its text layer only.
+- Vision transcription of hand-drawn or dense circuit diagrams can miss or misplace gates. Check the extracted text before trusting the circuit.
+- PDF text from multi-column layouts, equations, or circuit figures drawn as vector graphics may come out out of order or not at all.

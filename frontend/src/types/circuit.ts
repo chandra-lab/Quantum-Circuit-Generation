@@ -60,11 +60,25 @@ export type SimulationResponse = {
   metadata: SimulationMetadata;
   visualization: Visualization;
   learner_explanation?: LearnerExplanation;
+  extraction?: Extraction;
+};
+
+export type ExtractionMethod = "pdf_text" | "pdf_vision" | "image_vision";
+
+export type Extraction = {
+  filename: string;
+  media_type: string;
+  method: ExtractionMethod;
+  text: string;
+  truncated: boolean;
+  pages_read: number | null;
+  total_pages: number | null;
 };
 
 export type GenerateResponse = SimulationResponse & {
   prompt: string;
   source: "llm";
+  extraction?: Extraction;
 };
 
 export type HealthResponse = {
@@ -73,7 +87,8 @@ export type HealthResponse = {
   api: { status: string };
   quantum_simulator: { available: boolean; name: string; version?: string };
   pytorch: { available: boolean; version: string | null };
-  llm: { provider: string; configured: boolean; model: string };
+  llm: { provider: string; configured: boolean; model: string; vision_model?: string };
+  uploads?: { max_upload_mb: number; max_pdf_pages: number; media_types: string[] };
 };
 
 export type ResultSource = "llm" | "reference";
@@ -90,6 +105,7 @@ export type CircuitResult = {
   metadata: SimulationMetadata;
   visualization: Visualization;
   learnerExplanation?: LearnerExplanation;
+  extraction?: Extraction;
 };
 
 export type ViewMode = "learner" | "pro";

@@ -1,4 +1,5 @@
 import { CircuitDiagram } from "./CircuitDiagram";
+import { ExtractionNotice } from "./ExtractionNotice";
 import { Histogram } from "./Histogram";
 import { LearnerExplanation } from "./LearnerExplanation";
 import { ProbabilityBars } from "./ProbabilityBars";
@@ -10,6 +11,7 @@ type ResultsPanelProps = {
   result: CircuitResult | null;
   loading: "generate" | "reference" | null;
   mode?: ViewMode;
+  onEditExtraction?: (text: string) => void;
 };
 
 function formatGate(gate: string, qubits: number[], parameter?: number | null): string {
@@ -18,7 +20,7 @@ function formatGate(gate: string, qubits: number[], parameter?: number | null): 
   return `${gate.toUpperCase()}${angle} ${targets}`;
 }
 
-export function ResultsPanel({ result, loading, mode = "pro" }: ResultsPanelProps) {
+export function ResultsPanel({ result, loading, mode = "pro", onEditExtraction }: ResultsPanelProps) {
   return (
     <section className="panel min-h-[28rem]" aria-live="polite" aria-busy={loading !== null}>
       <h2 className="font-serif text-xl text-navy">Results</h2>
@@ -32,6 +34,11 @@ export function ResultsPanel({ result, loading, mode = "pro" }: ResultsPanelProp
           Generate a circuit from a prompt, or simulate a predefined reference circuit. Counts,
           probabilities, and the Qiskit diagram appear here.
         </p>
+      ) : null}
+      {result?.extraction ? (
+        <div className="mt-4">
+          <ExtractionNotice extraction={result.extraction} onEdit={onEditExtraction} />
+        </div>
       ) : null}
       {result && mode === "learner" ? <LearnerResult result={result} /> : null}
       {result && mode === "pro" ? (

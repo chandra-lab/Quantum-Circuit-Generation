@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ExamplePromptList } from "./ExamplePromptList";
 import { Histogram } from "./Histogram";
 import { ResultsPanel } from "./ResultsPanel";
@@ -61,5 +61,41 @@ describe("ResultsPanel", () => {
     expect(screen.getByText(bell.prompt)).toBeTruthy();
     expect(screen.getByText("Bell State")).toBeTruthy();
     expect(screen.getByText("qiskit-aer")).toBeTruthy();
+  });
+});
+
+describe("ResultsPanel with a file prompt", () => {
+  it("shows the extracted text and offers edit and regenerate", () => {
+    const bell = examplePrompts.find((example) => example.id === "bell");
+    if (!bell?.spec) {
+      throw new Error("bell spec missing");
+    }
+    const onEdit = vi.fn();
+    const result: CircuitResult = {
+      source: "llm",
+      prompt: "Uploaded file: question.pdf",
+      spec: bell.spec,
+      validation: { valid: true, errors: [] },
+      shots: 100,
+      counts: { "00": 50, "11": 50 },
+      probabilities: { "00": 0.5, "11": 0.5 },
+      metadata: { num_qubits: 2, num_clbits: 2, gates_applied: ["h", "cx"], simulator: "qiskit-aer", shots: 100 },
+      visualization: { format: "image/svg+xml", svg: "<svg></svg>" },
+      extraction: {
+        filename: "question.pdf",
+        media_type: "application/pdf",
+        method: "pdf_text",
+        text: "Prepare a Bell pair and measure both qubits.",
+        truncated: false,
+        pages_read: 10,
+        total_pages: 12,
+      },
+    };
+    render(<ResultsPanel result={result} loading={null} onEditExtraction={onEdit} />);
+    expect(screen.getByText("Extracted from your file")).toBeTruthy();
+    expect(screen.getByText("Prepare a Bell pair and measure both qubits.")).toBeTruthy();
+    expect(screen.getByText(/Read the first 10 of 12 pages/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit and regenerate" }));
+    expect(onEdit).toHaveBeenCalledWith("Prepare a Bell pair and measure both qubits.");
   });
 });

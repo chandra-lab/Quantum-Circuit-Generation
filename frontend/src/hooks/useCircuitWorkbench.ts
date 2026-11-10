@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ExamplePrompt } from "../data/examples";
-import { ApiError, generateAndSimulate, getHealth, simulate } from "../services/api";
+import { ApiError, generateAndSimulate, generateFromFile, getHealth, simulate } from "../services/api";
 import type { CircuitResult, HealthResponse } from "../types/circuit";
 
 export function useCircuitWorkbench() {
   const [prompt, setPrompt] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [shots, setShots] = useState(1000);
   const [loading, setLoading] = useState<"generate" | "reference" | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -34,7 +35,9 @@ export function useCircuitWorkbench() {
     setLoading("generate");
     setError(null);
     try {
-      const response = await generateAndSimulate(prompt, shots);
+      const response = attachment
+        ? await generateFromFile(attachment, prompt, shots)
+        : await generateAndSimulate(prompt, shots);
       setResult({
         source: "llm",
         prompt: response.prompt,
@@ -46,6 +49,7 @@ export function useCircuitWorkbench() {
         metadata: response.metadata,
         visualization: response.visualization,
         learnerExplanation: response.learner_explanation,
+        extraction: response.extraction,
       });
     } catch (caught) {
       setError(
@@ -56,7 +60,17 @@ export function useCircuitWorkbench() {
     } finally {
       setLoading(null);
     }
-  }, [prompt, shots]);
+  }, [attachment, prompt, shots]);
+
+  const editExtraction = useCallback(
+    (text: string) => {
+      const instructions = prompt.trim();
+      setPrompt(instructions ? `${text}\n\n${instructions}` : text);
+      setAttachment(null);
+      setError(null);
+    },
+    [prompt],
+  );
 
   const simulateReference = useCallback(
     async (example: ExamplePrompt) => {
@@ -97,6 +111,9 @@ export function useCircuitWorkbench() {
   return {
     prompt,
     setPrompt,
+    attachment,
+    setAttachment,
+    editExtraction,
     shots,
     setShots,
     loading,

@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 from app.quantum.examples import BELL_SPEC
+from app.services.llm.base import ImageInput
 
 
 def make_settings(tmp_path, **overrides) -> Settings:
@@ -46,16 +47,36 @@ def client(settings: Settings) -> Iterator[TestClient]:
 class FakeLLM:
     provider_name = "fake"
 
-    def __init__(self, responses: list[object]) -> None:
+    def __init__(
+        self,
+        responses: list[object],
+        transcriptions: list[object] | None = None,
+    ) -> None:
         self._responses = list(responses)
+        self._transcriptions = list(transcriptions or [])
         self.calls: list[bool] = []
+        self.messages: list[list[dict[str, str]]] = []
+        self.vision_calls: list[tuple[list[ImageInput], str | None]] = []
 
     def ensure_configured(self) -> None:
         return None
 
     async def complete(self, messages: list[dict[str, str]], *, strict: bool) -> str:
         self.calls.append(strict)
+        self.messages.append(messages)
         item = self._responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return str(item)
+
+    async def transcribe_images(
+        self,
+        images: list[ImageInput],
+        *,
+        instructions: str | None = None,
+    ) -> str:
+        self.vision_calls.append((images, instructions))
+        item = self._transcriptions.pop(0)
         if isinstance(item, Exception):
             raise item
         return str(item)

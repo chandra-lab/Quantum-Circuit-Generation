@@ -5,13 +5,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.errors import AppError
 from app.quantum.examples import example_catalog
 from app.quantum.simulator import simulator_status
+from app.services.extraction import check_upload
 from app.services.workflow import (
+    run_file_generation_and_simulation,
     run_generation,
     run_generation_and_simulation,
     run_simulation,
@@ -77,6 +79,12 @@ def health(request: Request) -> dict[str, object]:
             "provider": "groq",
             "configured": settings.llm_configured,
             "model": settings.groq_model,
+            "vision_model": settings.groq_vision_model,
+        },
+        "uploads": {
+            "max_upload_mb": settings.max_upload_mb,
+            "max_pdf_pages": settings.max_pdf_pages,
+            "media_types": ["image/png", "image/jpeg", "image/webp", "application/pdf"],
         },
     }
 
@@ -125,6 +133,32 @@ async def generate_and_simulate(
     return await run_generation_and_simulation(
         prompt=prompt,
         shots=body.shots,
+        provider=request.app.state.llm,
+        settings=settings,
+        history=request.app.state.history,
+    )
+
+
+@router.post("/circuits/generate-from-file")
+async def generate_from_file(
+    request: Request,
+    file: UploadFile = File(...),
+    prompt: str | None = Form(default=None),
+    shots: int | None = Form(default=None),
+) -> dict[str, Any]:
+    settings = request.app.state.settings
+    instructions = None
+    if prompt is not None and prompt.strip():
+        instructions = _checked_prompt(prompt, settings.max_prompt_chars)
+    try:
+        data = await file.read(settings.max_upload_bytes + 1)
+    finally:
+        await file.close()
+    upload = check_upload(file.filename, file.content_type, data, settings)
+    return await run_file_generation_and_simulation(
+        upload=upload,
+        instructions=instructions,
+        shots=shots,
         provider=request.app.state.llm,
         settings=settings,
         history=request.app.state.history,

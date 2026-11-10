@@ -7,4 +7,8 @@ qiskit-aer==0.18.2
 matplotlib==3.10.3
 pylatexenc==2.10
 httpx==0.28.1
+python-multipart==0.0.33
+pypdf==7.0.1
+pypdfium2==5.15.2
+pillow==13.0.0
 pytest==8.3.5
