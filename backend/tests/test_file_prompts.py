@@ -78,6 +78,8 @@ def test_pdf_text_endpoint_generates_and_simulates(tmp_path):
     assert sum(body["counts"].values()) == 500
     assert body["visualization"]["svg"].startswith("<svg")
     assert body["prompt"] == "Use 500 shots worth of detail."
+    assert body["learner_explanation"]["pattern"] == "bell"
+    assert body["learner_explanation"]["steps"]
     assert fake.vision_calls == []
     user_message = fake.messages[0][-1]["content"]
     assert "Bell State" in user_message
@@ -112,6 +114,7 @@ def test_image_routes_to_vision_method(tmp_path):
     body = response.json()
     assert body["extraction"]["method"] == "image_vision"
     assert body["extraction"]["text"] == BELL_QUESTION
+    assert body["learner_explanation"]["pattern"] == "bell"
     images, instructions = fake.vision_calls[0]
     assert [item.media_type for item in images] == ["image/png"]
     assert images[0].data == image
