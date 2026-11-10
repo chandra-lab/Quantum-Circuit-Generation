@@ -1,13 +1,19 @@
 # Used only by the dev container. `docker compose up` from the repo root
 # does not start this service.
+#
+# Paths in this file are relative to the first compose file
+# (../docker-compose.yml at the repository root), not to this directory.
+# Bind `.` (the clone) at /workspace. `..` is the parent of the clone; in
+# Codespaces that parent sits outside the workspace mount, so /workspace is
+# empty and VS Code reports that the workspace does not exist.
 services:
   workspace:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: .devcontainer/Dockerfile
     init: true
     volumes:
-      - ..:/workspace:cached
+      - .:/workspace:cached
     command:
       [
         "bash",

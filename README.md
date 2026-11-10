@@ -143,11 +143,15 @@ Keeping the clone inside the WSL filesystem is faster, but the same commands wor
 
 ## GitHub Codespaces
 
-`.devcontainer/devcontainer.json` starts the same Compose file and adds a small workspace container. On creation it copies `.env.example` to `.env` when `.env` is absent. Put a real key in a Codespaces secret named `GROQ_API_KEY`, or edit `.env` after the environment is up. Do not commit `.env`.
+`.devcontainer/devcontainer.json` starts the same Compose file and attaches VS Code to the `workspace` service in `.devcontainer/compose.workspace.yml`. That service is a small dev image (Python, git, and socat) with the repository bind-mounted at `/workspace`. The nginx frontend image only contains the built site.
 
-Path:
+Compose resolves paths in the override relative to `docker-compose.yml` (the first file in `dockerComposeFile`). The mount source is `.`, the repository root. A mount of `..` would attach the parent of the clone. In Codespaces that parent is outside the workspace mount, so Explorer shows an empty folder named `workspace` and VS Code reports that the workspace does not exist.
 
-1. Open the repository in a Codespace.
+On creation the dev container copies `.env.example` to `.env` when `.env` is absent. Put a real key in a Codespaces secret named `GROQ_API_KEY`, or edit `.env` after the environment is up. Do not commit `.env`.
+
+After the container is up, the Explorer root (`/workspace`) should list `frontend/`, `backend/`, `README.md`, and `docker-compose.yml`.
+
+1. Open the repository in a Codespace. To pick up this mount on a codespace created before the fix, open the Command Palette and run **Codespaces: Rebuild Container**, or create a new codespace. Reloading the window keeps the old mount.
 2. Wait for the first image build. PyTorch and Qiskit make this slower than a typical web container.
 3. Open the forwarded **Frontend** port **8080**. The port is marked public so a preview link can be shared for a demo.
 4. Open forwarded port **8000** and visit `/docs` for Swagger.
@@ -155,7 +159,7 @@ Path:
 
 The workspace container listens on 8080 and 8000 and relays those connections to the frontend and backend services, which is what Codespaces port forwarding attaches to. The Compose file also publishes the same ports for Docker Desktop.
 
-A terminal in the workspace container does not need to run `docker compose up` again. The stack is already the dev container. After changing the image definition, rebuild the Codespace. For day-to-day UI or API edits on a machine with Docker, rebuild with `docker compose up --build`.
+A terminal in the workspace container does not need to run `docker compose up` again. The stack is already the dev container. After changing the image definition or this mount, rebuild the Codespace. For day-to-day UI or API edits on a machine with Docker, rebuild with `docker compose up --build`.
 
 ## API
 
@@ -278,6 +282,7 @@ Another language-model provider can implement `CircuitLLM` in `backend/app/servi
 - **400 invalid_shots.** `shots` is below 1 or above `MAX_SHOTS`.
 - **413 payload_too_large.** The body exceeded `MAX_REQUEST_BYTES`.
 - **Frontend cannot reach the API in Compose.** Use http://localhost:8080 so the browser stays on the nginx origin. Do not point the built UI at `localhost:8000`.
+- **Codespace says the workspace does not exist, or Explorer shows an empty `workspace` folder.** The dev container attaches to the `workspace` service, which bind-mounts the repository root at `/workspace`. Rebuild the container (**Codespaces: Rebuild Container**) or create a new codespace after pulling the fix. Reloading the window does not remount the folder.
 - **Codespace preview is blank during the first start.** The backend health check waits until Aer imports. The frontend container starts after that check passes.
 - **Diagram text looks sparse.** The backend image installs DejaVu so Matplotlib can label gates. A local venv also needs Matplotlib, which `requirements.txt` installs.
 - **Port already allocated.** Change `8080` or `8000` on the host side of `docker-compose.yml`, and add the new frontend origin to `CORS_ORIGINS` if you call the API from the browser on that origin.
