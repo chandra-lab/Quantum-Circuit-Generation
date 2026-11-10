@@ -1,0 +1,65 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { ExamplePromptList } from "./ExamplePromptList";
+import { Histogram } from "./Histogram";
+import { ResultsPanel } from "./ResultsPanel";
+import { examplePrompts } from "../data/examples";
+import type { CircuitResult } from "../types/circuit";
+
+describe("Histogram", () => {
+  it("draws one bar for each measured outcome", () => {
+    render(<Histogram counts={{ "00": 48, "11": 52 }} />);
+    expect(screen.getByTestId("bar-00")).toBeTruthy();
+    expect(screen.getByTestId("bar-11")).toBeTruthy();
+    expect(screen.getByText("00")).toBeTruthy();
+    expect(screen.getByText("11")).toBeTruthy();
+  });
+});
+
+describe("ExamplePromptList", () => {
+  it("fills the box with the GHZ prompt", () => {
+    const selected: string[] = [];
+    render(
+      <ExamplePromptList
+        prompts={examplePrompts}
+        disabled={false}
+        onSelect={(prompt) => selected.push(prompt)}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /GHZ state/i }));
+    expect(selected[0]).toMatch(/GHZ/);
+    expect(selected[0]).toMatch(/three qubits/);
+  });
+});
+
+describe("ResultsPanel", () => {
+  it("labels a reference run as not LLM output", () => {
+    const bell = examplePrompts.find((example) => example.id === "bell");
+    if (!bell?.spec) {
+      throw new Error("bell spec missing");
+    }
+    const result: CircuitResult = {
+      source: "reference",
+      prompt: bell.prompt,
+      referenceLabel: bell.label,
+      spec: bell.spec,
+      validation: { valid: true, errors: [] },
+      shots: 1000,
+      counts: { "00": 500, "11": 500 },
+      probabilities: { "00": 0.5, "11": 0.5 },
+      metadata: {
+        num_qubits: 2,
+        num_clbits: 2,
+        gates_applied: ["h", "cx"],
+        simulator: "qiskit-aer",
+        shots: 1000,
+      },
+      visualization: { format: "image/svg+xml", svg: "<svg></svg>" },
+    };
+    render(<ResultsPanel result={result} loading={null} />);
+    expect(screen.getByText(/Predefined reference circuit — not LLM output/)).toBeTruthy();
+    expect(screen.getByText(bell.prompt)).toBeTruthy();
+    expect(screen.getByText("Bell State")).toBeTruthy();
+    expect(screen.getByText("qiskit-aer")).toBeTruthy();
+  });
+});
