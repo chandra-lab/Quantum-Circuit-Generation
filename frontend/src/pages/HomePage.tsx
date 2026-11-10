@@ -1,6 +1,7 @@
 import { ConfigNotice } from "../components/ConfigNotice";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { ExamplePromptList } from "../components/ExamplePromptList";
+import { ExtractionNotice } from "../components/ExtractionNotice";
 import { Header } from "../components/Header";
 import { PromptForm } from "../components/PromptForm";
 import { ReferenceCircuitList } from "../components/ReferenceCircuitList";
@@ -27,6 +28,9 @@ export function HomePage() {
           </p>
         ) : null}
         {workbench.error ? <ErrorBanner error={workbench.error} mode={mode} /> : null}
+        {workbench.error?.extraction ? (
+          <ExtractionNotice extraction={workbench.error.extraction} onEdit={workbench.editExtraction} />
+        ) : null}
       </div>
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
         <div className="space-y-6">
@@ -35,8 +39,11 @@ export function HomePage() {
             shots={workbench.shots}
             loading={workbench.loading === "generate"}
             disabled={busy}
+            attachment={workbench.attachment}
+            maxUploadMb={workbench.health?.uploads?.max_upload_mb}
             onPromptChange={workbench.setPrompt}
             onShotsChange={workbench.setShots}
+            onAttachmentChange={workbench.setAttachment}
             onSubmit={() => {
               void workbench.generate();
             }}
@@ -54,7 +61,12 @@ export function HomePage() {
             }}
           />
         </div>
-        <ResultsPanel result={workbench.result} loading={workbench.loading} mode={mode} />
+        <ResultsPanel
+          result={workbench.result}
+          loading={workbench.loading}
+          mode={mode}
+          onEditExtraction={workbench.editExtraction}
+        />
       </div>
       <footer className="mt-10 border-t border-line pt-4 text-xs leading-relaxed text-ink/60">
         Simulator: Qiskit Aer. Qubit count is capped by MAX_QUBITS. PyTorch is installed in the
