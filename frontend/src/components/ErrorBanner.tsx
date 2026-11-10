@@ -1,10 +1,13 @@
 import type { ApiError } from "../services/api";
+import type { ViewMode } from "../types/circuit";
 
 type ErrorBannerProps = {
   error: ApiError;
+  mode?: ViewMode;
 };
 
-export function ErrorBanner({ error }: ErrorBannerProps) {
+export function ErrorBanner({ error, mode = "pro" }: ErrorBannerProps) {
+  const explanation = mode === "learner" ? error.learnerExplanation : undefined;
   const configuration = error.code === "configuration_error";
   return (
     <div
@@ -21,6 +24,19 @@ export function ErrorBanner({ error }: ErrorBannerProps) {
             <li key={detail}>{detail}</li>
           ))}
         </ul>
+      ) : null}
+      {explanation ? (
+        <div className="mt-3 border-t border-red-200 pt-3">
+          <p className="font-semibold">What this means</p>
+          <p className="mt-1">{explanation.validation}</p>
+          {explanation.errors.length > 0 ? (
+            <ul className="mt-2 list-disc pl-5">
+              {explanation.errors.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

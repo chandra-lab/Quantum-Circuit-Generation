@@ -71,6 +71,18 @@ Generation does not wait on the database. If SQLite cannot be opened or a write 
 - Request body size, qubit count, shot count, and language-model attempts are bounded by environment variables.
 - Malformed JSON, provider errors, and rate limits surface as structured HTTP errors. Attempts back off and stop at `LLM_MAX_RETRIES`.
 
+## Learner and Pro modes
+
+A **Learner / Pro** toggle sits at the top right of the page header. It is a two-option radio group, so arrow keys, Home, and End move the selection. The choice is stored in `localStorage` under `qcg.viewMode`, so a reload keeps it.
+
+- **Pro** is the default. It is the full technical view: stats, gate list, circuit diagram, counts, probabilities, and the raw spec JSON.
+- **Learner** explains the same result in plain language for someone new to quantum computing: what the circuit is meant to do (from its name and description), what each gate does in the order applied, what the measurements store and how to read Qiskit bitstrings (the rightmost character is classical bit 0), the outcome percentages for the actual shot count and why small deviations are shot noise, a "Key idea" line for recognisable patterns (superposition, Bell, GHZ, deterministic bit flip), and the validation status. The circuit diagram and histogram stay visible. The stats, gate list, and spec JSON move behind **Show technical details**.
+
+Explanations come from the backend and are built from the validated spec and the simulator counts by fixed rules in `backend/app/services/explanation.py`. No language model is called, so they work without a Groq key and for the reference circuits. They describe this simulation only and do not report experimental results.
+
+- Successful `POST /api/circuits/simulate` and `POST /api/circuits/generate-and-simulate` responses add a `learner_explanation` object with `pattern`, `overview`, `steps`, `measurements`, `bit_order`, `outcome`, `key_idea`, `validation`, and `errors`. Every existing field is unchanged.
+- `validation_error` (422) and `measurements_required` (400) error bodies add a top-level `learner_explanation` whose `errors` list explains each validation detail in plain words. The `error` object keeps its shape.
+
 ## Circuit specification
 
 ```json
@@ -193,8 +205,8 @@ All JSON errors use this shape:
 | `GET` | `/api/circuits/examples` | Example prompts and the predefined reference specs |
 | `POST` | `/api/circuits/generate` | Body `{"prompt": "..."}`. Returns the spec, validation status, and model metadata |
 | `POST` | `/api/circuits/validate` | Body is a circuit spec, or `{"spec": {...}}`. Returns `valid`, `errors`, and the normalized spec |
-| `POST` | `/api/circuits/simulate` | Body `{"spec": {...}, "shots": 1000}`. Counts, probabilities, metadata, and SVG. No Groq key required |
-| `POST` | `/api/circuits/generate-and-simulate` | Body `{"prompt": "...", "shots": 1000}`. Spec, validation, diagram, counts, and probabilities |
+| `POST` | `/api/circuits/simulate` | Body `{"spec": {...}, "shots": 1000}`. Counts, probabilities, metadata, SVG, and `learner_explanation`. No Groq key required |
+| `POST` | `/api/circuits/generate-and-simulate` | Body `{"prompt": "...", "shots": 1000}`. Spec, validation, diagram, counts, probabilities, and `learner_explanation` |
 
 `shots` defaults to `SHOTS` (1000) and must be between 1 and `MAX_SHOTS`. Oversized bodies return HTTP 413. Invalid specs on simulate return HTTP 422. Provider rate limits return HTTP 429. Provider failures return HTTP 502. A timed-out model call returns HTTP 504.
 
@@ -243,7 +255,10 @@ cd frontend
 npm ci
 npm test
 npm run typecheck
+npm run build
 ```
+
+`ResultsPanel.pro.test.tsx` snapshots the Pro results markup, so an accidental change to the Pro view fails the suite.
 
 Check the Compose file without building images:
 

@@ -12,11 +12,14 @@ from fastapi.responses import JSONResponse
 from app.api.routes import router
 from app.core.config import Settings, get_settings
 from app.core.errors import AppError, error_payload
+from app.services.explanation import explain_errors
 from app.services.history import build_history
 from app.services.llm.groq import GroqProvider
 from app.utils.redact import install_redaction
 
 logger = logging.getLogger(__name__)
+
+LEARNER_EXPLAINED_ERRORS = frozenset({"validation_error", "measurements_required"})
 
 
 class RequestSizeLimitMiddleware:
@@ -75,7 +78,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(AppError)
     async def handle_app_error(_request: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content=error_payload(exc))
+        content = error_payload(exc)
+        if exc.code in LEARNER_EXPLAINED_ERRORS:
+            content["learner_explanation"] = explain_errors(exc.details, message=exc.message)
+        return JSONResponse(status_code=exc.status_code, content=content)
 
     @app.exception_handler(RequestValidationError)
     async def handle_request_validation(
