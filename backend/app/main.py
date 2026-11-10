@@ -22,10 +22,20 @@ logger = logging.getLogger(__name__)
 LEARNER_EXPLAINED_ERRORS = frozenset({"validation_error", "measurements_required"})
 
 
+# Multipart boundaries, headers, and the optional prompt field.
+UPLOAD_OVERHEAD_BYTES = 64 * 1024
+
+
 class RequestSizeLimitMiddleware:
-    def __init__(self, app: object, max_bytes: int) -> None:
+    def __init__(
+        self,
+        app: object,
+        max_bytes: int,
+        path_limits: dict[str, int] | None = None,
+    ) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.path_limits = path_limits or {}
 
     async def __call__(self, scope: dict, receive: object, send: object) -> None:
         if scope["type"] == "http" and scope.get("method") in {"POST", "PUT", "PATCH"}:
@@ -39,13 +49,19 @@ class RequestSizeLimitMiddleware:
                     size = int(length)
                 except ValueError:
                     size = 0
-                if size > self.max_bytes:
+                path = scope.get("path", "")
+                limit = self.path_limits.get(path, self.max_bytes)
+                if size > limit:
                     response = JSONResponse(
                         status_code=413,
                         content={
                             "error": {
-                                "code": "payload_too_large",
-                                "message": f"Request body exceeds {self.max_bytes} bytes.",
+                                "code": (
+                                    "file_too_large"
+                                    if path in self.path_limits
+                                    else "payload_too_large"
+                                ),
+                                "message": f"Request body exceeds {limit} bytes.",
                                 "details": [],
                             }
                         },
@@ -67,7 +83,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.history = build_history(settings.history_enabled, settings.history_database_path)
     app.state.llm = GroqProvider(settings)
 
-    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=settings.max_request_bytes)
+    app.add_middleware(
+        RequestSizeLimitMiddleware,
+        max_bytes=settings.max_request_bytes,
+        path_limits={
+            "/api/circuits/generate-from-file": settings.max_upload_bytes + UPLOAD_OVERHEAD_BYTES,
+        },
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list or ["http://localhost:8080"],

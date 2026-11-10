@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-20b"
+    groq_vision_model: str = "qwen/qwen3.8-27b"
     groq_timeout_seconds: float = 45.0
     max_qubits: int = Field(default=8, ge=1, le=16)
     max_shots: int = Field(default=10_000, ge=1, le=100_000)
@@ -26,10 +27,22 @@ class Settings(BaseSettings):
     max_request_bytes: int = Field(default=65_536, ge=1024, le=1_000_000)
     max_prompt_chars: int = Field(default=4000, ge=1, le=8000)
     max_gates: int = Field(default=128, ge=1, le=512)
+    # Groq rejects vision requests above 20 MB, and base64 adds a third.
+    max_upload_mb: int = Field(default=10, ge=1, le=14)
+    max_pdf_pages: int = Field(default=10, ge=1, le=100)
+    # Groq vision models accept at most 3 images per request.
+    pdf_vision_pages: int = Field(default=3, ge=1, le=3)
+    max_extracted_chars: int = Field(default=6000, ge=200, le=20_000)
     history_enabled: bool = True
     history_database_path: str = "data/history.db"
 
-    @field_validator("groq_api_key", "groq_model", "cors_origins", "history_database_path")
+    @field_validator(
+        "groq_api_key",
+        "groq_model",
+        "groq_vision_model",
+        "cors_origins",
+        "history_database_path",
+    )
     @classmethod
     def strip_text(cls, value: str) -> str:
         return value.strip()
@@ -43,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def llm_configured(self) -> bool:
         return bool(self.groq_api_key)
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
 
     @property
     def cors_origin_list(self) -> list[str]:

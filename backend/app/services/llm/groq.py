@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import logging
+import re
+from typing import Any
 
 import httpx
 
@@ -15,6 +18,8 @@ from app.core.errors import (
     LLMSchemaUnsupportedError,
     LLMTimeoutError,
 )
+from app.services.llm.base import ImageInput
+from app.services.llm.prompts import vision_transcription_prompt
 from app.services.llm.schema import response_format
 from app.utils.redact import redact
 
@@ -42,6 +47,35 @@ class GroqProvider:
             "messages": messages,
             "response_format": response_format(strict=strict),
         }
+        return await self._post(payload, strict=strict)
+
+    async def transcribe_images(
+        self,
+        images: list[ImageInput],
+        *,
+        instructions: str | None = None,
+    ) -> str:
+        self.ensure_configured()
+        content: list[dict[str, Any]] = [
+            {"type": "text", "text": vision_transcription_prompt(instructions)},
+        ]
+        for image in images:
+            encoded = base64.b64encode(image.data).decode("ascii")
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{image.media_type};base64,{encoded}"},
+                }
+            )
+        payload = {
+            "model": self._settings.groq_vision_model,
+            "temperature": 0.2,
+            "max_completion_tokens": 2048,
+            "messages": [{"role": "user", "content": content}],
+        }
+        return _strip_reasoning(await self._post(payload, strict=False))
+
+    async def _post(self, payload: dict[str, Any], *, strict: bool) -> str:
         headers = {
             "Authorization": f"Bearer {self._settings.groq_api_key}",
             "Content-Type": "application/json",
@@ -79,6 +113,10 @@ class GroqProvider:
         if not content.strip():
             raise LLMMalformedJSONError("The language model returned an empty response.")
         return content
+
+
+def _strip_reasoning(content: str) -> str:
+    return re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
 
 def _schema_rejected(body: str) -> bool:

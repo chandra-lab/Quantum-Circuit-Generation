@@ -94,6 +94,37 @@ class LLMSchemaUnsupportedError(AppError):
         )
 
 
+class FileTooLargeError(AppError):
+    def __init__(self, max_mb: int) -> None:
+        super().__init__(
+            413,
+            "file_too_large",
+            f"The uploaded file exceeds {max_mb} MB.",
+        )
+
+
+class UnsupportedFileTypeError(AppError):
+    def __init__(self, message: str | None = None) -> None:
+        super().__init__(
+            415,
+            "unsupported_media_type",
+            message or "Upload a PNG, JPEG, WebP, or PDF file.",
+        )
+
+
+class ExtractionError(AppError):
+    """Nothing usable could be read from an uploaded file."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "extraction_failed",
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(422, code, message, extra=extra)
+
+
 class SimulationError(AppError):
     def __init__(self, message: str | None = None) -> None:
         super().__init__(
