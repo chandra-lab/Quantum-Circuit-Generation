@@ -9,6 +9,7 @@ from app.core.errors import CircuitValidationError
 from app.quantum.simulator import simulate_spec
 from app.quantum.visualizer import circuit_to_svg
 from app.schemas.circuit import CircuitSpec, inspect_spec
+from app.services.explanation import explain_result
 from app.services.generation import GeneratedCircuit, request_circuit_spec
 from app.services.history import RunHistoryRepository, RunRecord, safe_record
 from app.services.llm.base import CircuitLLM
@@ -72,6 +73,7 @@ def simulation_body(
             "shots": output.shots,
         },
         "visualization": {"format": "image/svg+xml", "svg": svg},
+        "learner_explanation": explain_result(spec, shots=output.shots, counts=output.counts),
     }
 
 
