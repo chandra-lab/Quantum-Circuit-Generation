@@ -4,6 +4,20 @@ server {
     root /usr/share/nginx/html;
     client_max_body_size 64k;
 
+    # File prompts. The backend checks the same MAX_UPLOAD_MB limit.
+    location = /api/circuits/generate-from-file {
+        client_max_body_size ${MAX_UPLOAD_MB}m;
+        # Stream the body to the backend instead of buffering it to a temp file.
+        proxy_request_buffering off;
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 180s;
+        proxy_send_timeout 180s;
+    }
+
     location /api/ {
         proxy_pass http://backend:8000;
         proxy_http_version 1.1;
