@@ -1,4 +1,10 @@
-import type { CircuitSpec, GenerateResponse, HealthResponse, SimulationResponse } from "../types/circuit";
+import type {
+  CircuitSpec,
+  GenerateResponse,
+  HealthResponse,
+  LearnerExplanation,
+  SimulationResponse,
+} from "../types/circuit";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -7,6 +13,7 @@ export class ApiError extends Error {
   readonly code: string;
   readonly details: string[];
   readonly spec?: unknown;
+  readonly learnerExplanation?: LearnerExplanation;
 
   constructor(
     status: number,
@@ -14,6 +21,7 @@ export class ApiError extends Error {
     message: string,
     details: string[] = [],
     spec?: unknown,
+    learnerExplanation?: LearnerExplanation,
   ) {
     super(message);
     this.name = "ApiError";
@@ -21,6 +29,7 @@ export class ApiError extends Error {
     this.code = code;
     this.details = details;
     this.spec = spec;
+    this.learnerExplanation = learnerExplanation;
   }
 }
 
@@ -31,6 +40,7 @@ type ErrorBody = {
     details?: string[];
   };
   spec?: unknown;
+  learner_explanation?: LearnerExplanation;
 };
 
 export function parseApiError(status: number, body: unknown): ApiError {
@@ -42,6 +52,7 @@ export function parseApiError(status: number, body: unknown): ApiError {
       payload.error?.message ?? "Request failed.",
       payload.error?.details ?? [],
       payload.spec,
+      payload.learner_explanation,
     );
   }
   return new ApiError(status, "request_failed", "Request failed.");

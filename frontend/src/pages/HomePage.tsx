@@ -7,14 +7,16 @@ import { ReferenceCircuitList } from "../components/ReferenceCircuitList";
 import { ResultsPanel } from "../components/ResultsPanel";
 import { examplePrompts, referenceCircuits } from "../data/examples";
 import { useCircuitWorkbench } from "../hooks/useCircuitWorkbench";
+import { useViewMode } from "../hooks/useViewMode";
 
 export function HomePage() {
   const workbench = useCircuitWorkbench();
+  const [mode, setMode] = useViewMode();
   const busy = workbench.loading !== null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <Header />
+      <Header mode={mode} onModeChange={setMode} />
       <div className="mt-6 space-y-3">
         {workbench.health && !workbench.health.llm.configured ? (
           <ConfigNotice model={workbench.health.llm.model} />
@@ -24,7 +26,7 @@ export function HomePage() {
             {workbench.healthError}
           </p>
         ) : null}
-        {workbench.error ? <ErrorBanner error={workbench.error} /> : null}
+        {workbench.error ? <ErrorBanner error={workbench.error} mode={mode} /> : null}
       </div>
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
         <div className="space-y-6">
@@ -52,7 +54,7 @@ export function HomePage() {
             }}
           />
         </div>
-        <ResultsPanel result={workbench.result} loading={workbench.loading} />
+        <ResultsPanel result={workbench.result} loading={workbench.loading} mode={mode} />
       </div>
       <footer className="mt-10 border-t border-line pt-4 text-xs leading-relaxed text-ink/60">
         Simulator: Qiskit Aer. Qubit count is capped by MAX_QUBITS. PyTorch is installed in the

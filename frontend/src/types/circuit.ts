@@ -39,6 +39,18 @@ export type SimulationMetadata = {
   attempts?: number;
 };
 
+export type LearnerExplanation = {
+  pattern: "superposition" | "bell" | "ghz" | "bit_flip" | null;
+  overview: string;
+  steps: string[];
+  measurements: string[];
+  bit_order: string;
+  outcome: string[];
+  key_idea: string;
+  validation: string;
+  errors: string[];
+};
+
 export type SimulationResponse = {
   spec: CircuitSpec;
   validation: ValidationStatus;
@@ -47,6 +59,7 @@ export type SimulationResponse = {
   probabilities: Record<string, number>;
   metadata: SimulationMetadata;
   visualization: Visualization;
+  learner_explanation?: LearnerExplanation;
 };
 
 export type GenerateResponse = SimulationResponse & {
@@ -76,4 +89,7 @@ export type CircuitResult = {
   probabilities: Record<string, number>;
   metadata: SimulationMetadata;
   visualization: Visualization;
+  learnerExplanation?: LearnerExplanation;
 };
+
+export type ViewMode = "learner" | "pro";

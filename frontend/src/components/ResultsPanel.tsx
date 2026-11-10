@@ -1,13 +1,15 @@
 import { CircuitDiagram } from "./CircuitDiagram";
 import { Histogram } from "./Histogram";
+import { LearnerExplanation } from "./LearnerExplanation";
 import { ProbabilityBars } from "./ProbabilityBars";
 import { SpecViewer } from "./SpecViewer";
 import { StatusBadge } from "./StatusBadge";
-import type { CircuitResult } from "../types/circuit";
+import type { CircuitResult, ViewMode } from "../types/circuit";
 
 type ResultsPanelProps = {
   result: CircuitResult | null;
   loading: "generate" | "reference" | null;
+  mode?: ViewMode;
 };
 
 function formatGate(gate: string, qubits: number[], parameter?: number | null): string {
@@ -16,7 +18,7 @@ function formatGate(gate: string, qubits: number[], parameter?: number | null): 
   return `${gate.toUpperCase()}${angle} ${targets}`;
 }
 
-export function ResultsPanel({ result, loading }: ResultsPanelProps) {
+export function ResultsPanel({ result, loading, mode = "pro" }: ResultsPanelProps) {
   return (
     <section className="panel min-h-[28rem]" aria-live="polite" aria-busy={loading !== null}>
       <h2 className="font-serif text-xl text-navy">Results</h2>
@@ -31,68 +33,135 @@ export function ResultsPanel({ result, loading }: ResultsPanelProps) {
           probabilities, and the Qiskit diagram appear here.
         </p>
       ) : null}
-      {result ? (
+      {result && mode === "learner" ? <LearnerResult result={result} /> : null}
+      {result && mode === "pro" ? (
         <div className="mt-4 space-y-5">
-          <h3 className="font-serif text-2xl text-ink">{result.spec.circuit_name}</h3>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge valid={result.validation.valid} />
-            {result.source === "reference" ? (
-              <span className="inline-flex rounded-full bg-copper/10 px-2.5 py-1 text-xs font-semibold text-copper">
-                Predefined reference circuit — not LLM output
-              </span>
-            ) : (
-              <span className="inline-flex rounded-full bg-navy/10 px-2.5 py-1 text-xs font-semibold text-navy">
-                LLM output
-              </span>
-            )}
-          </div>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">Original prompt</h3>
-            <p className="mt-1 text-sm leading-relaxed">{result.prompt}</p>
-          </div>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Qubits" value={String(result.spec.num_qubits)} />
-            <Stat label="Clbits" value={String(result.spec.num_clbits)} />
-            <Stat label="Shots" value={String(result.shots)} />
-            <Stat label="Simulator" value={result.metadata.simulator} />
-          </dl>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">Gates applied</h3>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {result.spec.gates.map((gate, index) => (
-                <li key={`${gate.gate}-${index}`} className="rounded-md bg-paper px-2 py-1 font-mono text-xs">
-                  {formatGate(gate.gate, gate.qubits, gate.parameter)}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ResultHeading result={result} />
+          <Stats result={result} />
+          <GatesApplied result={result} />
           <p className="text-sm leading-relaxed text-ink/80">{result.spec.description}</p>
           <CircuitDiagram svg={result.visualization.svg} />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-semibold text-navy">Counts</h3>
-              <Histogram counts={result.counts} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-navy">Probabilities</h3>
-              <div className="mt-3">
-                <ProbabilityBars probabilities={result.probabilities} />
-              </div>
-            </div>
-          </div>
-          <p className="text-xs text-ink/50">
-            Bitstrings use Qiskit order: the rightmost bit is classical bit 0. Probabilities are count
-            divided by shots.
-          </p>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">Spec JSON</h3>
-            <div className="mt-2">
-              <SpecViewer spec={result.spec} />
-            </div>
-          </div>
+          <Distributions result={result} />
+          <BitOrderNote />
+          <SpecJson result={result} />
         </div>
       ) : null}
     </section>
+  );
+}
+
+function LearnerResult({ result }: { result: CircuitResult }) {
+  return (
+    <div className="mt-4 space-y-5">
+      <ResultHeading result={result} />
+      {result.learnerExplanation ? (
+        <LearnerExplanation explanation={result.learnerExplanation} />
+      ) : (
+        <p className="rounded-lg border border-line bg-paper px-4 py-3 text-sm leading-relaxed text-ink/80">
+          The backend did not send a plain-language explanation. Rebuild the backend with{" "}
+          <code className="font-mono text-xs">docker compose up --build</code> to enable Learner mode
+          explanations.
+        </p>
+      )}
+      <CircuitDiagram svg={result.visualization.svg} />
+      <Distributions result={result} />
+      <details className="rounded-lg border border-line px-4 py-3">
+        <summary className="cursor-pointer text-sm font-semibold text-navy">Show technical details</summary>
+        <div className="mt-4 space-y-5">
+          <Stats result={result} />
+          <GatesApplied result={result} />
+          <BitOrderNote />
+          <SpecJson result={result} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function ResultHeading({ result }: { result: CircuitResult }) {
+  return (
+    <>
+      <h3 className="font-serif text-2xl text-ink">{result.spec.circuit_name}</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge valid={result.validation.valid} />
+        {result.source === "reference" ? (
+          <span className="inline-flex rounded-full bg-copper/10 px-2.5 py-1 text-xs font-semibold text-copper">
+            Predefined reference circuit — not LLM output
+          </span>
+        ) : (
+          <span className="inline-flex rounded-full bg-navy/10 px-2.5 py-1 text-xs font-semibold text-navy">
+            LLM output
+          </span>
+        )}
+      </div>
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">Original prompt</h3>
+        <p className="mt-1 text-sm leading-relaxed">{result.prompt}</p>
+      </div>
+    </>
+  );
+}
+
+function Stats({ result }: { result: CircuitResult }) {
+  return (
+    <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Stat label="Qubits" value={String(result.spec.num_qubits)} />
+      <Stat label="Clbits" value={String(result.spec.num_clbits)} />
+      <Stat label="Shots" value={String(result.shots)} />
+      <Stat label="Simulator" value={result.metadata.simulator} />
+    </dl>
+  );
+}
+
+function GatesApplied({ result }: { result: CircuitResult }) {
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">Gates applied</h3>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {result.spec.gates.map((gate, index) => (
+          <li key={`${gate.gate}-${index}`} className="rounded-md bg-paper px-2 py-1 font-mono text-xs">
+            {formatGate(gate.gate, gate.qubits, gate.parameter)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Distributions({ result }: { result: CircuitResult }) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div>
+        <h3 className="text-sm font-semibold text-navy">Counts</h3>
+        <Histogram counts={result.counts} />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-navy">Probabilities</h3>
+        <div className="mt-3">
+          <ProbabilityBars probabilities={result.probabilities} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BitOrderNote() {
+  return (
+    <p className="text-xs text-ink/50">
+      Bitstrings use Qiskit order: the rightmost bit is classical bit 0. Probabilities are count
+      divided by shots.
+    </p>
+  );
+}
+
+function SpecJson({ result }: { result: CircuitResult }) {
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink/50">Spec JSON</h3>
+      <div className="mt-2">
+        <SpecViewer spec={result.spec} />
+      </div>
+    </div>
   );
 }
 

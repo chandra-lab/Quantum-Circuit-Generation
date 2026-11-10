@@ -45,6 +45,7 @@ export function useCircuitWorkbench() {
         probabilities: response.probabilities,
         metadata: response.metadata,
         visualization: response.visualization,
+        learnerExplanation: response.learner_explanation,
       });
     } catch (caught) {
       setError(
@@ -78,6 +79,7 @@ export function useCircuitWorkbench() {
           probabilities: response.probabilities,
           metadata: response.metadata,
           visualization: response.visualization,
+          learnerExplanation: response.learner_explanation,
         });
       } catch (caught) {
         setError(
