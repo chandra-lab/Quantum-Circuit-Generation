@@ -1,27 +1,25 @@
-# Used only by the dev container. `docker compose up` from the repo root
-# does not start this service.
+# Used only by the dev container. `docker compose up` from the repository
+# root reads docker-compose.yml and does not start this service.
 #
 # Paths in this file are relative to the first compose file
 # (../docker-compose.yml at the repository root), not to this directory.
 # Bind `.` (the clone) at /workspace. `..` is the parent of the clone; in
 # Codespaces that parent sits outside the workspace mount, so /workspace is
 # empty and VS Code reports that the workspace does not exist.
+#
+# This service is only the Codespaces attach target. It does not publish
+# 8080 or 8000 and it does not depend on frontend or backend. Those app
+# containers are started by `docker compose up --build` inside /workspace,
+# against the daemon from the docker-in-docker feature, so their published
+# ports listen in this container. privileged is required for that daemon.
+# Do not set an entrypoint; docker-init.sh has to remain the entrypoint.
 services:
   workspace:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
     init: true
+    privileged: true
     volumes:
       - .:/workspace:cached
-    command:
-      [
-        "bash",
-        "-lc",
-        "socat TCP-LISTEN:8080,fork,reuseaddr TCP:frontend:80 & socat TCP-LISTEN:8000,fork,reuseaddr TCP:backend:8000 & exec sleep infinity",
-      ]
-    depends_on:
-      backend:
-        condition: service_healthy
-      frontend:
-        condition: service_healthy
+    command: ["sleep", "infinity"]

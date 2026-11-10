@@ -2,7 +2,15 @@
   "name": "Quantum Circuit Generation",
   "dockerComposeFile": ["../docker-compose.yml", "compose.workspace.yml"],
   "service": "workspace",
+  "runServices": ["workspace"],
   "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    }
+  },
   "forwardPorts": [8080, 8000],
   "portsAttributes": {
     "8080": {
@@ -19,6 +27,6 @@
     }
   },
   "initializeCommand": "sh -c 'test -f .env || cp .env.example .env'",
-  "postStartCommand": "echo 'Frontend: port 8080. Swagger: port 8000 path /docs.'",
+  "postStartCommand": "echo 'From /workspace run: docker compose up --build. Frontend: port 8080. Swagger: port 8000 path /docs.'",
   "remoteUser": "root"
 }
