@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "circuit_id": "bell",
+  "circuit_name": "Bell State",
+  "source": "reference",
+  "num_qubits": 2,
+  "num_clbits": 2,
+  "spec": {
+    "circuit_name": "Bell State",
+    "num_qubits": 2,
+    "num_clbits": 2,
+    "gates": [
+      {
+        "gate": "h",
+        "qubits": [
+          0
+        ]
+      },
+      {
+        "gate": "cx",
+        "qubits": [
+          0,
+          1
+        ]
+      }
+    ],
+    "measurements": [
+      {
+        "qubit": 0,
+        "clbit": 0
+      },
+      {
+        "qubit": 1,
+        "clbit": 1
+      }
+    ],
+    "description": "Creates an entangled Bell state."
+  },
+  "gate_sequence": [
+    "h",
+    "cx"
+  ],
+  "measurements": [
+    {
+      "qubit": 0,
+      "clbit": 0
+    },
+    {
+      "qubit": 1,
+      "clbit": 1
+    }
+  ],
+  "bit_ordering": {
+    "convention": "qiskit_little_endian",
+    "qubit_index_base": 0,
+    "rule": "The rightmost character of a bitstring is qubit 0 (clbit 0 for sampled counts).",
+    "example": "For 3 qubits with only qubit 0 in |1>, the Qiskit bitstring is '001'.",
+    "matlab_note": "MATLAB quantumState.BasisStates put qubit 1 (Qiskit qubit 0) first, so the MATLAB label for the same state is '100'. Reverse the string to convert in either direction, and add 1 to every qubit index.",
+    "statevector_index": "Index i of amplitudes_* has bitstring format(i, '0{n}b') in Qiskit order."
+  },
+  "exact": {
+    "method": "qiskit.quantum_info.Statevector",
+    "measurements_removed": true,
+    "bitstrings": [
+      "00",
+      "01",
+      "10",
+      "11"
+    ],
+    "probabilities": [
+      0.4999999999999999,
+      0.0,
+      0.0,
+      0.4999999999999999
+    ],
+    "amplitudes_real": [
+      0.7071067811865475,
+      0.0,
+      0.0,
+      0.7071067811865475
+    ],
+    "amplitudes_imag": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "measured_bitstrings": [
+      "00",
+      "01",
+      "10",
+      "11"
+    ],
+    "measured_probabilities": [
+      0.4999999999999999,
+      0.0,
+      0.0,
+      0.4999999999999999
+    ]
+  },
+  "sampled": {
+    "method": "qiskit_aer.AerSimulator",
+    "shots": 4096,
+    "seed_simulator": 1234,
+    "bitstrings": [
+      "00",
+      "11"
+    ],
+    "counts": [
+      2074,
+      2022
+    ],
+    "probabilities": [
+      0.50634765625,
+      0.49365234375
+    ]
+  },
+  "versions": {
+    "qiskit": "2.6.2",
+    "qiskit_aer": "0.18.2",
+    "python": "3.12.3"
+  },
+  "generated_by": "python -m app.tools.export_for_matlab"
+}
