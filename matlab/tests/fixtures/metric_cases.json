@@ -74,12 +74,24 @@
     {
       "name": "identical",
       "reference": {
-        "00": 0.5,
-        "11": 0.5
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
       },
       "candidate": {
-        "00": 0.5,
-        "11": 0.5
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
       },
       "expected": {
         "states": [
@@ -99,10 +111,20 @@
     {
       "name": "disjoint",
       "reference": {
-        "0": 1.0
+        "states": [
+          "0"
+        ],
+        "values": [
+          1.0
+        ]
       },
       "candidate": {
-        "1": 1.0
+        "states": [
+          "1"
+        ],
+        "values": [
+          1.0
+        ]
       },
       "expected": {
         "states": [
@@ -122,14 +144,28 @@
     {
       "name": "shifted",
       "reference": {
-        "00": 0.5,
-        "01": 0.25,
-        "11": 0.25
+        "states": [
+          "00",
+          "01",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.25,
+          0.25
+        ]
       },
       "candidate": {
-        "00": 0.4,
-        "10": 0.1,
-        "11": 0.5
+        "states": [
+          "00",
+          "10",
+          "11"
+        ],
+        "values": [
+          0.4,
+          0.1,
+          0.5
+        ]
       },
       "expected": {
         "states": [
@@ -153,12 +189,24 @@
     {
       "name": "reversed_unmapped",
       "reference": {
-        "001": 0.75,
-        "111": 0.25
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
       },
       "candidate": {
-        "100": 0.75,
-        "111": 0.25
+        "states": [
+          "100",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
       },
       "expected": {
         "states": [
@@ -180,12 +228,24 @@
     {
       "name": "reversed_mapped",
       "reference": {
-        "001": 0.75,
-        "111": 0.25
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
       },
       "candidate": {
-        "001": 0.75,
-        "111": 0.25
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
       },
       "expected": {
         "states": [
@@ -206,12 +266,24 @@
   "goodness_of_fit_cases": [
     {
       "counts": {
-        "00": 520,
-        "11": 480
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          520,
+          480
+        ]
       },
       "expected_probabilities": {
-        "00": 0.5,
-        "11": 0.5
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
       },
       "expected": {
         "test": "chi_square_goodness_of_fit",
@@ -226,13 +298,26 @@
     },
     {
       "counts": {
-        "00": 500,
-        "01": 2,
-        "11": 498
+        "states": [
+          "00",
+          "01",
+          "11"
+        ],
+        "values": [
+          500,
+          2,
+          498
+        ]
       },
       "expected_probabilities": {
-        "00": 0.5,
-        "11": 0.5
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
       },
       "expected": {
         "test": "chi_square_goodness_of_fit",
@@ -246,18 +331,65 @@
         ],
         "passed": false
       }
+    },
+    {
+      "counts": {
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          2900,
+          1196
+        ]
+      },
+      "expected_probabilities": {
+        "states": [
+          "001",
+          "011",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.0,
+          0.25
+        ]
+      },
+      "expected": {
+        "test": "chi_square_goodness_of_fit",
+        "shots": 4096,
+        "statistic": 38.520833333333336,
+        "dof": 1,
+        "p_value": 5.417231673911752e-10,
+        "alpha": 0.001,
+        "impossible_outcomes": [],
+        "passed": false
+      }
     }
   ],
   "homogeneity_cases": [
     {
       "counts_a": {
-        "00": 520,
-        "11": 480
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          520,
+          480
+        ]
       },
       "counts_b": {
-        "00": 470,
-        "01": 3,
-        "11": 527
+        "states": [
+          "00",
+          "01",
+          "11"
+        ],
+        "values": [
+          470,
+          3,
+          527
+        ]
       },
       "expected": {
         "test": "chi_square_homogeneity",

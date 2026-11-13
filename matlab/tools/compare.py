@@ -275,12 +275,18 @@ def matlab_counts_to_clbits(export: Mapping[str, Any], matlab_counts: Mapping[st
     return mapped
 
 
+def _as_arrays(distribution: Mapping[str, float]) -> dict[str, list]:
+    # Parallel arrays, because MATLAB jsondecode turns keys such as "00" into field names like x00.
+    keys = sorted(distribution)
+    return {"states": keys, "values": [distribution[k] for k in keys]}
+
+
 def _fixture_case(name: str, reference: dict[str, float], candidate: dict[str, float]) -> dict[str, Any]:
     metrics = compare_distributions(reference, candidate)
     return {
         "name": name,
-        "reference": reference,
-        "candidate": candidate,
+        "reference": _as_arrays(reference),
+        "candidate": _as_arrays(candidate),
         "expected": {
             key: metrics[key]
             for key in ("states", "abs_diff", "max_abs_error", "total_variation", "hellinger", "kl_divergence")
@@ -288,11 +294,18 @@ def _fixture_case(name: str, reference: dict[str, float], candidate: dict[str, f
     }
 
 
+def _gof_case(counts: dict[str, int], expected: dict[str, float]) -> dict[str, Any]:
+    return {
+        "counts": _as_arrays(counts),
+        "expected_probabilities": _as_arrays(expected),
+        "expected": chi_square_goodness_of_fit(counts, expected),
+    }
+
+
 def build_fixture() -> dict[str, Any]:
     """Golden values that matlab/tests compares the MATLAB implementation against."""
     probe_qiskit = {"001": 0.75, "111": 0.25}
     probe_matlab = remap_labels(probe_qiskit, qiskit_to_matlab_label)
-    gof_counts = {"00": 520, "11": 480}
     hom_a = {"00": 520, "11": 480}
     hom_b = {"00": 470, "01": 3, "11": 527}
     return {
@@ -337,19 +350,16 @@ def build_fixture() -> dict[str, Any]:
             ),
         ],
         "goodness_of_fit_cases": [
-            {
-                "counts": gof_counts,
-                "expected_probabilities": {"00": 0.5, "11": 0.5},
-                "expected": chi_square_goodness_of_fit(gof_counts, {"00": 0.5, "11": 0.5}),
-            },
-            {
-                "counts": {"00": 500, "01": 2, "11": 498},
-                "expected_probabilities": {"00": 0.5, "11": 0.5},
-                "expected": chi_square_goodness_of_fit({"00": 500, "01": 2, "11": 498}, {"00": 0.5, "11": 0.5}),
-            },
+            _gof_case({"00": 520, "11": 480}, {"00": 0.5, "11": 0.5}),
+            _gof_case({"00": 500, "01": 2, "11": 498}, {"00": 0.5, "11": 0.5}),
+            _gof_case({"001": 2900, "111": 1196}, {"001": 0.75, "011": 0.0, "111": 0.25}),
         ],
         "homogeneity_cases": [
-            {"counts_a": hom_a, "counts_b": hom_b, "expected": chi_square_homogeneity(hom_a, hom_b)},
+            {
+                "counts_a": _as_arrays(hom_a),
+                "counts_b": _as_arrays(hom_b),
+                "expected": chi_square_homogeneity(hom_a, hom_b),
+            },
         ],
         "chi2_sf_cases": [
             {"statistic": x, "dof": k, "p_value": chi2_sf(x, k)}
