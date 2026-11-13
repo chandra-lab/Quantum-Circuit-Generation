@@ -40,6 +40,26 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # Offline PyTorch experiments. The profile keeps it out of `docker compose up`.
+  # Run with: docker compose run --rm research train
+  # It reuses the backend build, so its layers come from the backend's cache.
+  research:
+    profiles: ["research"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # Runs and datasets are bind-mounted, so write them as the host user (Linux default uid 1000).
+    user: "${RESEARCH_UID:-1000}:${RESEARCH_GID:-1000}"
+    environment:
+      HOME: /tmp
+    volumes:
+      - ./backend/research/runs:/app/research/runs
+      - ./backend/research/data:/app/research/data
+      - ./backend/research/configs:/app/research/configs:ro
+    entrypoint: ["python", "-m", "research"]
+    command: ["--help"]
+    restart: "no"
+
   frontend:
     build:
       context: ./frontend
