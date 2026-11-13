@@ -352,6 +352,49 @@ Another language-model provider can implement `CircuitLLM` in `backend/app/servi
 - **Diagram text looks sparse.** The backend image installs DejaVu so Matplotlib can label gates. A local venv also needs Matplotlib, which `requirements.txt` installs.
 - **Port already allocated.** Change `8080` or `8000` on the host side of `docker-compose.yml`, and add the new frontend origin to `CORS_ORIGINS` if you call the API from the browser on that origin.
 
+## MATLAB validation workflow
+
+`matlab/` holds an optional, offline cross-check: it rebuilds the reference circuits with MATLAB's quantum simulator and compares the results with Qiskit. The app, the Docker images, Codespaces, and the Python tests do not need MATLAB, and no Dockerfile installs it. Full details are in [`matlab/README.md`](matlab/README.md).
+
+**Prerequisites.** MATLAB R2023a or later, the first release with the MATLAB Support Package for Quantum Computing, and that support package. It is a free add-on but needs a licensed MATLAB. It is not open source, so follow the MathWorks license terms. Install it from **Home > Environment > Add-Ons > Get Add-Ons** by searching for "MATLAB Support Package for Quantum Computing". No other toolbox is needed.
+
+**Export.** A Python CLI in the backend writes each circuit's spec, gate list, exact Qiskit `Statevector` probabilities (measurements removed), seeded Aer counts, the bit-order convention, and the `qiskit`/`qiskit-aer` versions to `matlab/data/qiskit_results/*.json`. It exports Bell, superposition, GHZ, and bit flip from `backend/app/quantum/examples.py`, plus two validation-only circuits: an asymmetric bit-order probe and one that uses all 13 supported gates. A generated copy is committed, so MATLAB users can skip this step. To regenerate it in the backend container, from the repository root:
+
+```bash
+docker compose run --rm --no-deps --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/matlab/data/qiskit_results:/export" \
+  backend python -m app.tools.export_for_matlab --output-dir /export
+```
+
+In PowerShell, use `-v "${PWD}/matlab/data/qiskit_results:/export"` and drop `--user`. Without Docker, run `python -m app.tools.export_for_matlab` from `backend/`. Defaults are 4096 shots and seed 1234 (`--shots`, `--seed`, `--circuits`).
+
+**Run in MATLAB.**
+
+```matlab
+cd matlab
+run_validation      % simulate, compare, write reports and plots
+run_tests           % matlab.unittest suite
+```
+
+**Outputs.** `matlab/results/` gets `exact_comparison.csv`, `sampled_comparison.csv`, `summary.csv`, `summary.json`, and `summary.txt`. `matlab/results/plots/` gets a grouped bar chart and a difference chart per circuit. The folder is not committed.
+
+**Methodology.**
+
+- *Exact (primary).* MATLAB `simulate` probabilities, `abs(Amplitudes).^2` over every basis state, against Qiskit `Statevector` probabilities. Pass when the max absolute error is at most `1e-10` and the state fidelity is within `1e-10` of 1.
+- *Sampled (secondary).* `randsample` counts against the exact distribution (chi-square goodness of fit) and against the Aer counts (two-sample chi-square), with `alpha = 1e-3`. The generators differ, so counts never match exactly; the tests ask whether the gap exceeds shot noise.
+- *Bit ordering.* Qiskit bitstrings put qubit 0 on the right. MATLAB basis labels put qubit 1, which is Qiskit qubit 0, on the left. The same state is the reversed string: Qiskit `001` is MATLAB `100`. Every comparison maps MATLAB labels to Qiskit order first, and the reports show both. Bell and GHZ look the same in either order, which is why the asymmetric probe circuit is included.
+- *Metrics.* Per-state absolute difference, max absolute error, total variation distance, Hellinger distance, and KL divergence with `1e-12` smoothing.
+- *Python twin.* `matlab/tools/compare.py` implements the same mapping, metrics, and tests. A shared fixture generated from it is checked by both pytest and `matlab.unittest`, so the two implementations cannot drift apart unnoticed.
+
+Python tests that run without MATLAB:
+
+```bash
+cd backend && pytest                       # includes tests/test_export_for_matlab.py
+cd .. && python -m pytest matlab/tools     # mapping and metrics, standard library + pytest
+```
+
+**Limitations.** The MATLAB code has been syntax-checked but not executed in this repository's environment, and no MATLAB results are committed. Only noiseless statevector simulation is compared. Sampled checks are statistical and can fail by chance about once in a thousand runs. The exported circuits have at most three qubits and do not include language-model output.
+
 ## Limitations
 
 - No fine-tuning, no trained checkpoint, and no reported model scores.
