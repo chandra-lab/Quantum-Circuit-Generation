@@ -1,0 +1,438 @@
+{
+  "generated_by": "python matlab/tools/compare.py --write-fixture",
+  "epsilon": 1e-12,
+  "label_cases": [
+    {
+      "matlab": "100",
+      "qiskit": "001"
+    },
+    {
+      "matlab": "110",
+      "qiskit": "011"
+    },
+    {
+      "matlab": "01",
+      "qiskit": "10"
+    },
+    {
+      "matlab": "1",
+      "qiskit": "1"
+    },
+    {
+      "matlab": "0011",
+      "qiskit": "1100"
+    }
+  ],
+  "clbit_cases": [
+    {
+      "matlab": "10",
+      "measurements": [
+        {
+          "qubit": 0,
+          "clbit": 1
+        },
+        {
+          "qubit": 1,
+          "clbit": 0
+        }
+      ],
+      "num_clbits": 2,
+      "qiskit_clbits": "10"
+    },
+    {
+      "matlab": "110",
+      "measurements": [
+        {
+          "qubit": 0,
+          "clbit": 0
+        },
+        {
+          "qubit": 1,
+          "clbit": 1
+        },
+        {
+          "qubit": 2,
+          "clbit": 2
+        }
+      ],
+      "num_clbits": 3,
+      "qiskit_clbits": "011"
+    },
+    {
+      "matlab": "011",
+      "measurements": [
+        {
+          "qubit": 2,
+          "clbit": 0
+        }
+      ],
+      "num_clbits": 2,
+      "qiskit_clbits": "01"
+    }
+  ],
+  "metric_cases": [
+    {
+      "name": "identical",
+      "reference": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
+      },
+      "candidate": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
+      },
+      "expected": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "abs_diff": [
+          0.0,
+          0.0
+        ],
+        "max_abs_error": 0.0,
+        "total_variation": 0.0,
+        "hellinger": 0.0,
+        "kl_divergence": 0.0
+      }
+    },
+    {
+      "name": "disjoint",
+      "reference": {
+        "states": [
+          "0"
+        ],
+        "values": [
+          1.0
+        ]
+      },
+      "candidate": {
+        "states": [
+          "1"
+        ],
+        "values": [
+          1.0
+        ]
+      },
+      "expected": {
+        "states": [
+          "0",
+          "1"
+        ],
+        "abs_diff": [
+          1.0,
+          1.0
+        ],
+        "max_abs_error": 1.0,
+        "total_variation": 1.0,
+        "hellinger": 1.0,
+        "kl_divergence": 27.631021115874287
+      }
+    },
+    {
+      "name": "shifted",
+      "reference": {
+        "states": [
+          "00",
+          "01",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.25,
+          0.25
+        ]
+      },
+      "candidate": {
+        "states": [
+          "00",
+          "10",
+          "11"
+        ],
+        "values": [
+          0.4,
+          0.1,
+          0.5
+        ]
+      },
+      "expected": {
+        "states": [
+          "00",
+          "01",
+          "10",
+          "11"
+        ],
+        "abs_diff": [
+          0.09999999999999998,
+          0.25,
+          0.1,
+          0.25
+        ],
+        "max_abs_error": 0.25,
+        "total_variation": 0.35,
+        "hellinger": 0.446355255269576,
+        "kl_divergence": 6.499466669194981
+      }
+    },
+    {
+      "name": "reversed_unmapped",
+      "reference": {
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
+      },
+      "candidate": {
+        "states": [
+          "100",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
+      },
+      "expected": {
+        "states": [
+          "001",
+          "100",
+          "111"
+        ],
+        "abs_diff": [
+          0.75,
+          0.75,
+          0.0
+        ],
+        "max_abs_error": 0.75,
+        "total_variation": 0.75,
+        "hellinger": 0.8660254037844386,
+        "kl_divergence": 20.507504282547053
+      }
+    },
+    {
+      "name": "reversed_mapped",
+      "reference": {
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
+      },
+      "candidate": {
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.25
+        ]
+      },
+      "expected": {
+        "states": [
+          "001",
+          "111"
+        ],
+        "abs_diff": [
+          0.0,
+          0.0
+        ],
+        "max_abs_error": 0.0,
+        "total_variation": 0.0,
+        "hellinger": 0.0,
+        "kl_divergence": 0.0
+      }
+    }
+  ],
+  "goodness_of_fit_cases": [
+    {
+      "counts": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          520,
+          480
+        ]
+      },
+      "expected_probabilities": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
+      },
+      "expected": {
+        "test": "chi_square_goodness_of_fit",
+        "shots": 1000,
+        "statistic": 1.6,
+        "dof": 1,
+        "p_value": 0.2059032107320684,
+        "alpha": 0.001,
+        "impossible_outcomes": [],
+        "passed": true
+      }
+    },
+    {
+      "counts": {
+        "states": [
+          "00",
+          "01",
+          "11"
+        ],
+        "values": [
+          500,
+          2,
+          498
+        ]
+      },
+      "expected_probabilities": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          0.5,
+          0.5
+        ]
+      },
+      "expected": {
+        "test": "chi_square_goodness_of_fit",
+        "shots": 1000,
+        "statistic": 0.008,
+        "dof": 1,
+        "p_value": 0.9287300745648026,
+        "alpha": 0.001,
+        "impossible_outcomes": [
+          "01"
+        ],
+        "passed": false
+      }
+    },
+    {
+      "counts": {
+        "states": [
+          "001",
+          "111"
+        ],
+        "values": [
+          2900,
+          1196
+        ]
+      },
+      "expected_probabilities": {
+        "states": [
+          "001",
+          "011",
+          "111"
+        ],
+        "values": [
+          0.75,
+          0.0,
+          0.25
+        ]
+      },
+      "expected": {
+        "test": "chi_square_goodness_of_fit",
+        "shots": 4096,
+        "statistic": 38.520833333333336,
+        "dof": 1,
+        "p_value": 5.417231673911752e-10,
+        "alpha": 0.001,
+        "impossible_outcomes": [],
+        "passed": false
+      }
+    }
+  ],
+  "homogeneity_cases": [
+    {
+      "counts_a": {
+        "states": [
+          "00",
+          "11"
+        ],
+        "values": [
+          520,
+          480
+        ]
+      },
+      "counts_b": {
+        "states": [
+          "00",
+          "01",
+          "11"
+        ],
+        "values": [
+          470,
+          3,
+          527
+        ]
+      },
+      "expected": {
+        "test": "chi_square_homogeneity",
+        "shots_a": 1000,
+        "shots_b": 1000,
+        "statistic": 7.718897013832465,
+        "dof": 2,
+        "p_value": 0.02107962158351562,
+        "alpha": 0.001,
+        "passed": true
+      }
+    }
+  ],
+  "chi2_sf_cases": [
+    {
+      "statistic": 0.0,
+      "dof": 1,
+      "p_value": 1.0
+    },
+    {
+      "statistic": 1.0,
+      "dof": 1,
+      "p_value": 0.31731050786291437
+    },
+    {
+      "statistic": 3.841458820694124,
+      "dof": 1,
+      "p_value": 0.05000000000000004
+    },
+    {
+      "statistic": 10.0,
+      "dof": 5,
+      "p_value": 0.07523524614651206
+    },
+    {
+      "statistic": 50.0,
+      "dof": 7,
+      "p_value": 1.4444852779215397e-08
+    },
+    {
+      "statistic": 2.5,
+      "dof": 3,
+      "p_value": 0.4752910833430205
+    }
+  ]
+}

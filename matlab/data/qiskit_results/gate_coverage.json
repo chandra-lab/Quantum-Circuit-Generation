@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "circuit_id": "gate_coverage",
+  "circuit_name": "Gate Coverage",
+  "source": "validation",
+  "num_qubits": 3,
+  "num_clbits": 3,
+  "spec": {
+    "circuit_name": "Gate Coverage",
+    "num_qubits": 3,
+    "num_clbits": 3,
+    "gates": [
+      {
+        "gate": "i",
+        "qubits": [
+          0
+        ]
+      },
+      {
+        "gate": "h",
+        "qubits": [
+          0
+        ]
+      },
+      {
+        "gate": "t",
+        "qubits": [
+          0
+        ]
+      },
+      {
+        "gate": "h",
+        "qubits": [
+          0
+        ]
+      },
+      {
+        "gate": "ry",
+        "qubits": [
+          1
+        ],
+        "parameter": 0.7
+      },
+      {
+        "gate": "s",
+        "qubits": [
+          1
+        ]
+      },
+      {
+        "gate": "rx",
+        "qubits": [
+          1
+        ],
+        "parameter": 1.1
+      },
+      {
+        "gate": "x",
+        "qubits": [
+          2
+        ]
+      },
+      {
+        "gate": "y",
+        "qubits": [
+          2
+        ]
+      },
+      {
+        "gate": "h",
+        "qubits": [
+          2
+        ]
+      },
+      {
+        "gate": "z",
+        "qubits": [
+          2
+        ]
+      },
+      {
+        "gate": "cx",
+        "qubits": [
+          0,
+          1
+        ]
+      },
+      {
+        "gate": "rz",
+        "qubits": [
+          2
+        ],
+        "parameter": 0.4
+      },
+      {
+        "gate": "cz",
+        "qubits": [
+          1,
+          2
+        ]
+      },
+      {
+        "gate": "h",
+        "qubits": [
+          2
+        ]
+      },
+      {
+        "gate": "swap",
+        "qubits": [
+          0,
+          2
+        ]
+      },
+      {
+        "gate": "h",
+        "qubits": [
+          1
+        ]
+      }
+    ],
+    "measurements": [
+      {
+        "qubit": 0,
+        "clbit": 0
+      },
+      {
+        "qubit": 1,
+        "clbit": 1
+      },
+      {
+        "qubit": 2,
+        "clbit": 2
+      }
+    ],
+    "description": "Validation-only circuit that applies all 13 supported gates with interference, so a wrong gate, angle, control, or phase changes the probabilities."
+  },
+  "gate_sequence": [
+    "i",
+    "h",
+    "t",
+    "h",
+    "ry",
+    "s",
+    "rx",
+    "x",
+    "y",
+    "h",
+    "z",
+    "cx",
+    "rz",
+    "cz",
+    "h",
+    "swap",
+    "h"
+  ],
+  "measurements": [
+    {
+      "qubit": 0,
+      "clbit": 0
+    },
+    {
+      "qubit": 1,
+      "clbit": 1
+    },
+    {
+      "qubit": 2,
+      "clbit": 2
+    }
+  ],
+  "bit_ordering": {
+    "convention": "qiskit_little_endian",
+    "qubit_index_base": 0,
+    "rule": "The rightmost character of a bitstring is qubit 0 (clbit 0 for sampled counts).",
+    "example": "For 3 qubits with only qubit 0 in |1>, the Qiskit bitstring is '001'.",
+    "matlab_note": "MATLAB quantumState.BasisStates put qubit 1 (Qiskit qubit 0) first, so the MATLAB label for the same state is '100'. Reverse the string to convert in either direction, and add 1 to every qubit index.",
+    "statevector_index": "Index i of amplitudes_* has bitstring format(i, '0{n}b') in Qiskit order."
+  },
+  "exact": {
+    "method": "qiskit.quantum_info.Statevector",
+    "measurements_removed": true,
+    "bitstrings": [
+      "000",
+      "001",
+      "010",
+      "011",
+      "100",
+      "101",
+      "110",
+      "111"
+    ],
+    "probabilities": [
+      0.06471925414522949,
+      0.362057441151407,
+      4.281271054253089e-33,
+      0.42677669529663664,
+      0.062119236185383966,
+      0.011104068517979081,
+      0.07322330470336304,
+      5.3211715585550675e-34
+    ],
+    "amplitudes_real": [
+      -0.23503476085959804,
+      0.23026524850072114,
+      4.5720405760012405e-17,
+      0.24999999999999986,
+      -0.23026524850072114,
+      -0.04032558970527289,
+      0.24999999999999986,
+      8.633300730597608e-18
+    ],
+    "amplitudes_imag": [
+      -0.09735458557716253,
+      -0.555909485873652,
+      4.680721687296642e-17,
+      -0.6035533905932735,
+      -0.09537898887220972,
+      0.09735458557716256,
+      0.10355339059327374,
+      2.1391196187931365e-17
+    ],
+    "measured_bitstrings": [
+      "000",
+      "001",
+      "010",
+      "011",
+      "100",
+      "101",
+      "110",
+      "111"
+    ],
+    "measured_probabilities": [
+      0.06471925414522949,
+      0.362057441151407,
+      4.281271054253089e-33,
+      0.42677669529663664,
+      0.062119236185383966,
+      0.011104068517979081,
+      0.07322330470336304,
+      5.3211715585550675e-34
+    ]
+  },
+  "sampled": {
+    "method": "qiskit_aer.AerSimulator",
+    "shots": 4096,
+    "seed_simulator": 1234,
+    "bitstrings": [
+      "000",
+      "001",
+      "011",
+      "100",
+      "101",
+      "110"
+    ],
+    "counts": [
+      275,
+      1466,
+      1771,
+      234,
+      43,
+      307
+    ],
+    "probabilities": [
+      0.067138671875,
+      0.35791015625,
+      0.432373046875,
+      0.05712890625,
+      0.010498046875,
+      0.074951171875
+    ]
+  },
+  "versions": {
+    "qiskit": "2.6.2",
+    "qiskit_aer": "0.18.2",
+    "python": "3.12.3"
+  },
+  "generated_by": "python -m app.tools.export_for_matlab"
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "generated_by": "python -m app.tools.export_for_matlab",
+  "shots": 4096,
+  "seed_simulator": 1234,
+  "versions": {
+    "qiskit": "2.6.2",
+    "qiskit_aer": "0.18.2",
+    "python": "3.12.3"
+  },
+  "bit_ordering": {
+    "convention": "qiskit_little_endian",
+    "qubit_index_base": 0,
+    "rule": "The rightmost character of a bitstring is qubit 0 (clbit 0 for sampled counts).",
+    "example": "For 3 qubits with only qubit 0 in |1>, the Qiskit bitstring is '001'.",
+    "matlab_note": "MATLAB quantumState.BasisStates put qubit 1 (Qiskit qubit 0) first, so the MATLAB label for the same state is '100'. Reverse the string to convert in either direction, and add 1 to every qubit index.",
+    "statevector_index": "Index i of amplitudes_* has bitstring format(i, '0{n}b') in Qiskit order."
+  },
+  "circuits": [
+    {
+      "circuit_id": "bell",
+      "circuit_name": "Bell State",
+      "source": "reference",
+      "file": "bell.json"
+    },
+    {
+      "circuit_id": "superposition",
+      "circuit_name": "Superposition",
+      "source": "reference",
+      "file": "superposition.json"
+    },
+    {
+      "circuit_id": "ghz",
+      "circuit_name": "GHZ State",
+      "source": "reference",
+      "file": "ghz.json"
+    },
+    {
+      "circuit_id": "bit_flip",
+      "circuit_name": "Bit Flip",
+      "source": "reference",
+      "file": "bit_flip.json"
+    },
+    {
+      "circuit_id": "bit_order_probe",
+      "circuit_name": "Bit Order Probe",
+      "source": "validation",
+      "file": "bit_order_probe.json"
+    },
+    {
+      "circuit_id": "gate_coverage",
+      "circuit_name": "Gate Coverage",
+      "source": "validation",
+      "file": "gate_coverage.json"
+    }
+  ]
+}

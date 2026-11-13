@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "circuit_id": "bit_order_probe",
+  "circuit_name": "Bit Order Probe",
+  "source": "validation",
+  "num_qubits": 3,
+  "num_clbits": 3,
+  "spec": {
+    "circuit_name": "Bit Order Probe",
+    "num_qubits": 3,
+    "num_clbits": 3,
+    "gates": [
+      {
+        "gate": "x",
+        "qubits": [
+          0
+        ]
+      },
+      {
+        "gate": "ry",
+        "qubits": [
+          1
+        ],
+        "parameter": 1.0471975511965976
+      },
+      {
+        "gate": "cx",
+        "qubits": [
+          1,
+          2
+        ]
+      }
+    ],
+    "measurements": [
+      {
+        "qubit": 0,
+        "clbit": 0
+      },
+      {
+        "qubit": 1,
+        "clbit": 1
+      },
+      {
+        "qubit": 2,
+        "clbit": 2
+      }
+    ],
+    "description": "Validation-only circuit. Qubit 0 is always 1 and qubits 1 and 2 are 1 with probability 0.25, so Qiskit reports 001 and 111 and a reversed mapping does not match."
+  },
+  "gate_sequence": [
+    "x",
+    "ry",
+    "cx"
+  ],
+  "measurements": [
+    {
+      "qubit": 0,
+      "clbit": 0
+    },
+    {
+      "qubit": 1,
+      "clbit": 1
+    },
+    {
+      "qubit": 2,
+      "clbit": 2
+    }
+  ],
+  "bit_ordering": {
+    "convention": "qiskit_little_endian",
+    "qubit_index_base": 0,
+    "rule": "The rightmost character of a bitstring is qubit 0 (clbit 0 for sampled counts).",
+    "example": "For 3 qubits with only qubit 0 in |1>, the Qiskit bitstring is '001'.",
+    "matlab_note": "MATLAB quantumState.BasisStates put qubit 1 (Qiskit qubit 0) first, so the MATLAB label for the same state is '100'. Reverse the string to convert in either direction, and add 1 to every qubit index.",
+    "statevector_index": "Index i of amplitudes_* has bitstring format(i, '0{n}b') in Qiskit order."
+  },
+  "exact": {
+    "method": "qiskit.quantum_info.Statevector",
+    "measurements_removed": true,
+    "bitstrings": [
+      "000",
+      "001",
+      "010",
+      "011",
+      "100",
+      "101",
+      "110",
+      "111"
+    ],
+    "probabilities": [
+      0.0,
+      0.7500000000000001,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.24999999999999994
+    ],
+    "amplitudes_real": [
+      0.0,
+      0.8660254037844387,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.49999999999999994
+    ],
+    "amplitudes_imag": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "measured_bitstrings": [
+      "000",
+      "001",
+      "010",
+      "011",
+      "100",
+      "101",
+      "110",
+      "111"
+    ],
+    "measured_probabilities": [
+      0.0,
+      0.7500000000000001,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.24999999999999994
+    ]
+  },
+  "sampled": {
+    "method": "qiskit_aer.AerSimulator",
+    "shots": 4096,
+    "seed_simulator": 1234,
+    "bitstrings": [
+      "001",
+      "111"
+    ],
+    "counts": [
+      3099,
+      997
+    ],
+    "probabilities": [
+      0.756591796875,
+      0.243408203125
+    ]
+  },
+  "versions": {
+    "qiskit": "2.6.2",
+    "qiskit_aer": "0.18.2",
+    "python": "3.12.3"
+  },
+  "generated_by": "python -m app.tools.export_for_matlab"
+}
