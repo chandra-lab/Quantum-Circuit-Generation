@@ -13,7 +13,7 @@ RUN apt-get update \
 
 COPY requirements.txt .
 
-# CPU PyTorch is for later research imports. Simulation uses Qiskit Aer only.
+# CPU PyTorch is used by the offline research package. Simulation uses Qiskit Aer only.
 # The import below fails the image build if torch or Aer cannot be imported.
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir "torch==2.6.0+cpu" --index-url https://download.pytorch.org/whl/cpu \
@@ -21,9 +21,12 @@ RUN pip install --no-cache-dir --upgrade pip \
     && python -c "import torch; print('torch', torch.__version__); import qiskit; from qiskit_aer import AerSimulator; AerSimulator(); print('quantum-ok')"
 
 COPY app ./app
+# Offline experiments only (python -m research). The API never imports this package.
+COPY research ./research
 
 RUN useradd --create-home --uid 10001 appuser \
-    && mkdir -p /tmp/mpl \
+    && mkdir -p /tmp/mpl research/runs research/data \
+    && chown appuser research/runs research/data \
     && chmod 1777 /tmp/mpl
 USER appuser
 

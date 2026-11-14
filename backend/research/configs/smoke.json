@@ -1,0 +1,35 @@
+{
+  "name": "smoke",
+  "runs_dir": "research/runs",
+  "dataset": {
+    "seed": 7,
+    "samples_per_class": 30,
+    "min_qubits": 1,
+    "max_qubits": 8,
+    "max_gates": 128,
+    "max_padding_gates": 4,
+    "path": "research/data/smoke.jsonl"
+  },
+  "split": {
+    "seed": 7,
+    "train": 0.6,
+    "val": 0.2,
+    "test": 0.2
+  },
+  "model": {
+    "hidden_sizes": [32],
+    "dropout": 0.0
+  },
+  "train": {
+    "seed": 7,
+    "epochs": 5,
+    "batch_size": 32,
+    "learning_rate": 0.005,
+    "weight_decay": 0.0,
+    "early_stopping_patience": 0,
+    "monitor": "val_macro_f1",
+    "device": "cpu",
+    "deterministic": true,
+    "num_threads": 1
+  }
+}

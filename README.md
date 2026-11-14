@@ -2,7 +2,7 @@
 
 A research framework that turns a natural-language description of a quantum problem into an executable circuit. A language model returns a structured JSON specification. The backend validates that specification, builds a Qiskit circuit through a fixed gate map, simulates it with Qiskit Aer, and returns the diagram, counts, and probabilities. The React UI shows each of those artifacts.
 
-The framework is meant to be extended. This repository is an MVP of that path. It does not report experimental results, and it does not claim that a model has been evaluated, fine-tuned, or compared against a baseline.
+The framework is meant to be extended. This repository is an MVP of that path. It does not report circuit-generation results, and it does not claim that a language model has been evaluated, fine-tuned, or compared against a baseline. The only measured numbers are from the offline classifier on synthetic data in [PyTorch experimentation workflow](#pytorch-experimentation-workflow).
 
 ## Research motivation
 
@@ -57,7 +57,7 @@ Generation does not wait on the database. If SQLite cannot be opened or a write 
 | Language model | Groq via `GROQ_API_KEY` and `GROQ_MODEL`. Structured JSON when the model supports it. `GROQ_VISION_MODEL` reads images |
 | File prompts | `pypdf` for PDF text, `pypdfium2` and Pillow to render scanned pages |
 | Quantum | Qiskit and Qiskit Aer. No `eval` or `exec`. No model-authored Python |
-| Machine learning | CPU PyTorch in the backend image, imported only for a version check |
+| Machine learning | CPU PyTorch in the backend image. The API imports it only for a version check. The offline `backend/research` classifier uses it |
 | History | Optional SQLite behind a repository interface |
 | Runtime | Docker Compose. The host does not need Python or Node |
 
@@ -306,7 +306,7 @@ docker compose config
 
 CPU PyTorch is installed in `backend/Dockerfile` from the official CPU index (`https://download.pytorch.org/whl/cpu`). The image build imports it and prints the version. `/api/health` reports that version and nothing else about the library.
 
-Simulation does not import PyTorch. No weights are trained or downloaded for a task model.
+Simulation and the API do not import PyTorch. The only trained model is the offline classifier described in [PyTorch experimentation workflow](#pytorch-experimentation-workflow), and no weights are downloaded.
 
 Possible later uses, none of which are implemented and none of which have results in this repository:
 
@@ -314,6 +314,119 @@ Possible later uses, none of which are implemented and none of which have result
 - Quantum reasoning experiments that score generated specs.
 - Offline evaluation of language-model circuit proposals.
 - Learned circuit optimization, with Aer still used as the executor.
+
+## PyTorch experimentation workflow
+
+`backend/research/` is an offline experiment harness. It trains a small **circuit-category classifier on synthetic, rule-labelled circuit specs**. It does not generate circuits, it is not compared with the Groq model, and nothing in the web app calls it. It is a reproducible baseline for future research: a fixed dataset, documented features, a model, splits, metrics, and saved runs that later experiments can replace one piece at a time.
+
+The FastAPI process never imports `research`, and `app` imports no torch at startup (a test checks this). Only `research/model.py`, `train.py` and `evaluate.py` import torch. Dataset generation and feature extraction need just the app's own dependencies.
+
+### Dataset
+
+`python -m research generate-dataset` writes `backend/research/data/circuits.jsonl` (one `{"id", "category", "spec"}` object per line) and a `circuits.meta.json` with class counts, the generator config and a SHA-256 of the records. The default config produces 300 specs for each of 7 categories (2,100 in total), with a fixed seed. Every spec is passed through the app's `normalize_spec` with `MAX_QUBITS=8` and `max_gates=128`, so it is a valid `CircuitSpec`.
+
+| Category | Construction |
+| --- | --- |
+| `superposition` | H on a random non-empty subset of qubits, sometimes followed by one z, s or t on one of those qubits |
+| `bell` | H on a control and one CX to a target, with optional X on the target first and Z on the control after (the four Bell states) |
+| `ghz` | H on a root, then CX gates in a star or a chain over 3 or more qubits |
+| `basis_state` | X on a random non-empty subset (bit flips), sometimes one Z |
+| `rotation` | 3 to 12 rx/ry/rz gates with \|angle\| ≥ 0.1 on random qubits, at most one extra h/s/t, no two-qubit gates |
+| `swap_permutation` | X on a non-empty subset, then 1 to 4 SWAPs |
+| `random_mixed` | 6 to 16 gates from the full allowlist, always including a CX or CZ, a rotation, and one of h/y/s/t |
+
+Qubit counts are drawn up to 8 (at least 2 for two-qubit categories and 3 for GHZ), qubits and angles are random, and up to 4 padding operations are inserted that do not change the prepared state: an identity gate anywhere, or an adjacent `x x` or `z z` pair on one qubit. Every qubit is measured. The label is the recipe that built the spec, so it is correct by construction.
+
+### Features
+
+`research/features.py` turns a spec into 28 numbers, in a fixed order. Each run saves the descriptions to `features.json`.
+
+| Feature | Definition |
+| --- | --- |
+| `num_qubits`, `num_clbits` | Register sizes |
+| `total_gates` | Entries in `gates`, identity included. Measurements are not counted |
+| `count_<gate>` | One count for each supported gate: `cx cz h i rx ry rz s swap t x y z` |
+| `single_qubit_gates`, `two_qubit_gates` | Gates acting on one qubit, and on two (cx, cz, swap) |
+| `parametric_gates` | rx + ry + rz |
+| `depth` | `QuantumCircuit.depth()` of the circuit from the app's `build_circuit`, measurements included |
+| `num_measurements` | Entries in `measurements` |
+| `entangling_gates` | cx + cz (SWAP is excluded because it does not entangle) |
+| `entangling_pairs` | Distinct unordered qubit pairs joined by cx or cz |
+| `largest_entangling_component` | Qubits in the largest connected component of the cx/cz graph. An isolated qubit counts as 1 |
+| `interaction_pairs`, `largest_interaction_component` | The same two features, over a graph that also includes SWAP edges |
+| `active_qubits` | Qubits touched by any non-identity gate |
+| `h_before_cx_control` | 1 if some cx's control qubit had an h earlier in the gate list |
+
+### Model and training
+
+The model is an MLP (28 → 64 → 64 → 7, ReLU, dropout 0.1) trained with cross-entropy and Adam (learning rate 1e-3, weight decay 1e-4, batch size 64). The data gets a stratified 70/15/15 train/validation/test split. A standard scaler is fitted on the training split only. Validation runs after every epoch. The best checkpoint is chosen by validation macro F1, with ties going to the lower validation loss. Early stopping waits 10 epochs without improvement, up to a maximum of 60 epochs. The test split is scored once, with the best checkpoint.
+
+Metrics are computed in NumPy (no scikit-learn): accuracy, macro and per-class precision, recall and F1, and a confusion matrix for validation and test. Every hyperparameter is in `research/configs/default.json`, and `research/configs/smoke.json` is a seconds-long sanity run.
+
+Determinism: the Python, NumPy and torch seeds come from the config. The run calls `torch.use_deterministic_algorithms(True)`, uses one CPU thread and draws batches from a seeded generator. Only the CPU device is accepted.
+
+### Commands
+
+With Docker, the `research` service is in a Compose profile, so `docker compose up` neither builds nor starts it. It reuses the backend image's build cache, bind-mounts `backend/research/{runs,data}` so outputs land on the host, and mounts `backend/research/configs` read-only:
+
+```bash
+docker compose run --rm --build research generate-dataset
+docker compose run --rm research train
+docker compose run --rm research train --config research/configs/smoke.json
+docker compose run --rm research evaluate --run-dir research/runs/<run-name>
+docker compose run --rm research evaluate --run-dir research/runs/<run-name> --checkpoint last
+```
+
+The container writes files as uid:gid `1000:1000` by default. On Linux, if your user has another id, set `RESEARCH_UID=$(id -u) RESEARCH_GID=$(id -g)`. Pass `--build` again after changing code under `backend/research/`. The plain backend service can run the same commands, but its outputs stay inside the container: `docker compose run --rm backend python -m research train`.
+
+Locally, from `backend/` with the backend venv active:
+
+```bash
+pip install "torch==2.6.0+cpu" --index-url https://download.pytorch.org/whl/cpu
+python -m research generate-dataset
+python -m research train --config research/configs/default.json   # or: python -m research.train
+python -m research evaluate --run-dir research/runs/<run-name>
+```
+
+Useful flags are `--seed` (overrides the dataset, split and training seeds together), `--samples-per-class`, `--epochs`, `--name`, `--run-dir` and `--dataset`. `evaluate --dataset <file.jsonl>` scores every sample in another dataset instead of the run's test split. Relative paths are resolved against `backend/`.
+
+Tests: `pytest` in `backend/` runs the research tests too. The feature, dataset and import tests need no torch. The training and reproducibility tests are skipped when torch is not installed, and they run in a few seconds when it is.
+
+### Outputs
+
+Each run is written to `backend/research/runs/<name>-<UTC timestamp>/` (git-ignored apart from its README) and contains:
+
+- `checkpoints/best.pt` and `checkpoints/last.pt`
+- `config.json`, `label_map.json`, `scaler.json` (train-split means and scales), `features.json`
+- `history.csv` and `loss_curve.png`, with per-epoch train and validation loss, validation accuracy and validation macro F1
+- `metrics.json`, `confusion_matrix_{val,test}.csv` and `per_class_{val,test}.csv`
+- `evaluation_<checkpoint>.json`, written by `evaluate`
+
+### Reproducing a run
+
+Use the same config and seed. If the dataset file is missing, or its metadata does not match the config, it is regenerated. The default dataset's SHA-256 is `68f97ff8c79781b7f16035e9767326caf7cda69aee1abdba8a80a013fad477f6`. A test trains twice with one seed and requires identical per-epoch history and validation and test metrics. `run_training` with the default config produced the same `metrics.json` and `history.csv` in the Docker image and in a local Python 3.11 venv with torch 2.6.0+cpu. Other torch versions or CPUs may differ in the last digits.
+
+### Measured results
+
+These come from **a single run on synthetic data**: the default config with seed 1234 and torch 2.6.0+cpu. The run used 1,470 training, 315 validation and 315 test specs (45 per class in each evaluation split) and trained for all 60 epochs. The best checkpoint was epoch 60.
+
+| Split | Accuracy | Macro precision | Macro recall | Macro F1 | Loss |
+| --- | --- | --- | --- | --- | --- |
+| Validation | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0009 |
+| Test | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0019 |
+
+Every class scored precision, recall and F1 of 1.0 on test, and the test confusion matrix is diagonal (45 per class). The 5-epoch `smoke.json` run, with 30 specs per class, a 32-unit hidden layer and seed 7, scored 0.8810 test accuracy and 0.8818 macro F1 on 42 test specs.
+
+A perfect score is the expected result, not evidence of a strong model. The labels come from structural rules, and the features expose that structure almost directly: for example, "no H, only X gates" is a basis state, and "rotations with no two-qubit gates" is a rotation circuit.
+
+### Limitations
+
+- The data is synthetic and the labels are rule-derived. The classifier says nothing about language-model output, real algorithms, hardware or noise, and it is not a circuit generator.
+- The categories are separable from hand-made features, so accuracy near 1.0 is the ceiling to expect rather than a finding. Harder tasks need new labels: for example, simulated properties such as entanglement entropy, or near-miss specs that break a category's rule.
+- The features ignore gate order, apart from `depth` and `h_before_cx_control`, and ignore angles. Two specs with the same gate multiset look almost identical to the model.
+- There is one run per config. No variance across seeds, no hyperparameter search and no baseline model are reported.
+- There is no second head. A binary "is entangling" target was left out because, defined from the construction, it would just restate the category, and defined from the gates, it would just restate a feature.
+- Only the CPU device is supported, and no GPU dependencies are added.
 
 ## Project layout
 
@@ -324,6 +437,7 @@ backend/app/schemas      circuit spec
 backend/app/services     Groq provider, retries, history, workflows, file extraction
 backend/app/quantum      gate map, builder, Aer, SVG, reference specs
 backend/app/utils        redaction and shot limits
+backend/research         offline PyTorch circuit-category classifier (not imported by the API)
 backend/tests            pytest
 frontend/src/components  UI pieces
 frontend/src/pages       home page
@@ -354,7 +468,7 @@ Another language-model provider can implement `CircuitLLM` in `backend/app/servi
 
 ## Limitations
 
-- No fine-tuning, no trained checkpoint, and no reported model scores.
+- No fine-tuning of the language model. The only trained checkpoint is the offline synthetic-data classifier in `backend/research`, which is not used by the app.
 - No circuit optimizer and no compiler beyond the gates Aer can run directly.
 - One live language-model adapter. The provider interface is there so another adapter can be added later.
 - `MAX_QUBITS` defaults to 8 and cannot be configured above 16. This is a statevector-sized simulator, not a device.

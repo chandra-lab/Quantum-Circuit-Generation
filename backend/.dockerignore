@@ -4,3 +4,5 @@ __pycache__
 *.py[cod]
 *.db
 data
+research/runs
+research/data

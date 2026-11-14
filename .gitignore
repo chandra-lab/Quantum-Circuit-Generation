@@ -13,3 +13,7 @@ backend/data/
 .vite/
 *.tsbuildinfo
 .DS_Store
+backend/research/runs/*
+!backend/research/runs/README.md
+backend/research/data/*
+!backend/research/data/.gitkeep
